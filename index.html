@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>慢讀（修訂版 v2）</title>
+    <script src="https://unpkg.com/opencc-js@1.0.5/dist/umd/full.js"></script>
+    <style>
+        :root {
+            --background-color: #f4f1ea;
+            --text-color: #3a3a3a;
+            --control-color: #a9a9a9;
+            --control-hover-color: #8b8b8b;
+            /* 【新增】進度條顏色變數 */
+            --progress-color: #4a7c85;
+        }
+
+        body {
+            margin: 0;
+            padding-top: 25px; /* 為進度條和百分比留出空間 */
+            font-family: 'Noto Serif TC', serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+
+        /* 【修訂】進度條容器樣式 */
+        #progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+        }
+
+        /* 【修訂】進度條樣式：加粗、改色 */
+        #progress-bar {
+            height: 8px;
+            background-color: var(--progress-color);
+            width: 0%;
+            transition: width 0.4s ease-out;
+        }
+
+        /* 【新增】進度百分比樣式 */
+        #progress-percentage {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--progress-color);
+            font-family: 'Helvetica Neue', sans-serif;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #settings-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #text-input {
+            width: 100%;
+            height: 200px;
+            padding: 1rem;
+            border: 1px solid var(--control-color);
+            border-radius: 5px;
+            background-color: #fff;
+            font-size: 1rem;
+            resize: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .timer-setting {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        #timer-input {
+            width: 50px;
+            padding: 0.5rem;
+            text-align: center;
+            border: 1px solid var(--control-color);
+            border-radius: 5px;
+            margin: 0 1rem;
+        }
+
+        #start-button {
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            background-color: var(--text-color);
+            color: var(--background-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #start-button:hover {
+            background-color: var(--control-hover-color);
+        }
+
+        #reader-view {
+            display: none;
+            width: 80%;
+            max-width: 800px;
+            height: 60%;
+            text-align: center;
+            position: relative;
+        }
+
+        #text-display {
+            font-size: 1.8rem;
+            line-height: 1.8;
+            height: 100%;
+            width: 100%; 
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: left;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        #text-display.fade-out {
+            opacity: 0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 15px;
+            margin: 0 20px;
+            fill: var(--control-color);
+            transition: fill 0.3s ease;
+        }
+
+        .control-button:hover {
+            fill: var(--control-hover-color);
+        }
+
+        .control-button svg {
+            width: 24px;
+            height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+        <span id="progress-percentage">0%</span>
+    </div>
+
+    <div class="container">
+        <div id="settings-view">
+            <textarea id="text-input" placeholder="在此貼上您的文字..."></textarea>
+            <div class="timer-setting">
+                <span>每</span>
+                <input type="number" id="timer-input" value="7" min="4">
+                <span>秒翻頁</span>
+            </div>
+            <button id="start-button">開始閱讀</button>
+        </div>
+
+        <div id="reader-view">
+            <div id="text-display"></div>
+            <div class="controls">
+                <button class="control-button" id="prev-button" title="上一頁">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                    </svg>
+                </button>
+                <button class="control-button" id="stay-button" title="停留">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M6 6h12v12H6z"/>
+                    </svg>
+                </button>
+                <button class="control-button" id="next-button" title="下一頁">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const settingsView = document.getElementById('settings-view');
+        const readerView = document.getElementById('reader-view');
+        const textInput = document.getElementById('text-input');
+        const timerInput = document.getElementById('timer-input');
+        const startButton = document.getElementById('start-button');
+        const textDisplay = document.getElementById('text-display');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const stayButton = document.getElementById('stay-button');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+
+        let textSegments = [];
+        let currentIndex = 0;
+        let intervalId = null;
+        let isStaying = false;
+        let pageTurnInterval = 7000;
+
+        const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' });
+
+        startButton.addEventListener('click', () => {
+            const rawText = textInput.value;
+            if (rawText.trim() === '') {
+                alert('請輸入文字內容');
+                return;
+            }
+
+            const traditionalText = toTraditional(rawText);
+            const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
+
+            // 【修訂】替換換行符及後方所有空格為標記，以達成刪除空格的目的
+            const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
+
+            segmentText(textWithMarkers);
+            
+            pageTurnInterval = parseInt(timerInput.value, 10) * 1000;
+            if (isNaN(pageTurnInterval) || pageTurnInterval < 4000) {
+                pageTurnInterval = 4000;
+                timerInput.value = 4;
+            }
+
+            settingsView.style.display = 'none';
+            readerView.style.display = 'block';
+            
+            currentIndex = 0;
+            displaySegment(currentIndex);
+            startAutoPageTurn();
+        });
+
+        function segmentText(text) {
+            const regex = /(?<=[。？！\.”’』」])|(?=__NEW_PARA__)/g;
+            const rawSegments = text.split(regex).filter(segment => segment && segment.trim() !== '');
+            
+            textSegments = [];
+            for (const segment of rawSegments) {
+                if (textSegments.length > 0 && /^\s*[」”’』]\s*$/.test(segment)) {
+                    textSegments[textSegments.length - 1] += segment;
+                } else {
+                    textSegments.push(segment);
+                }
+            }
+        }
+
+        function displaySegment(index) {
+            if (index >= 0 && index < textSegments.length) {
+                let currentSegment = textSegments[index];
+                let isNewParagraph = false;
+
+                textDisplay.classList.add('fade-out');
+
+                if (currentSegment.startsWith('__NEW_PARA__')) {
+                    isNewParagraph = true;
+                    currentSegment = currentSegment.substring('__NEW_PARA__'.length);
+                }
+                
+                setTimeout(() => {
+                    let displayText = currentSegment;
+                    // 【修訂】如果是新段落，在前面加上分段符號
+                    if (isNewParagraph) {
+                        displayText = '¶ ' + displayText;
+                    }
+                    textDisplay.textContent = displayText;
+                    textDisplay.classList.remove('fade-out');
+                    
+                    updateProgressBar();
+                }, 800);
+            }
+        }
+
+        // 【修訂】更新進度條和百分比
+        function updateProgressBar() {
+            if (textSegments.length > 0) {
+                const percentage = ((currentIndex + 1) / textSegments.length) * 100;
+                progressBar.style.width = percentage + '%';
+                progressPercentage.textContent = Math.round(percentage) + '%';
+            } else {
+                progressBar.style.width = '0%';
+                progressPercentage.textContent = '0%';
+            }
+        }
+
+        function startAutoPageTurn() {
+            if (intervalId) clearInterval(intervalId);
+            intervalId = setInterval(() => {
+                if (!isStaying) {
+                    goToNextSegment();
+                }
+            }, pageTurnInterval);
+        }
+
+        function stopAutoPageTurn() {
+            clearInterval(intervalId);
+        }
+
+        function goToNextSegment() {
+            if (currentIndex < textSegments.length - 1) {
+                currentIndex++;
+                displaySegment(currentIndex);
+            } else {
+                stopAutoPageTurn();
+            }
+        }
+
+        function goToPrevSegment() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                displaySegment(currentIndex);
+            }
+        }
+
+        prevButton.addEventListener('click', () => {
+            goToPrevSegment();
+            startAutoPageTurn();
+        });
+
+        nextButton.addEventListener('click', () => {
+            goToNextSegment();
+            startAutoPageTurn();
+        });
+
+        stayButton.addEventListener('mousedown', () => { isStaying = true; });
+        stayButton.addEventListener('mouseup', () => { isStaying = false; });
+        stayButton.addEventListener('mouseleave', () => { isStaying = false; });
+        stayButton.addEventListener('touchstart', (e) => { e.preventDefault(); isStaying = true; });
+        stayButton.addEventListener('touchend', () => { isStaying = false; });
+
+    </script>
+
+</body>
+</html>
