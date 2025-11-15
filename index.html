@@ -11,13 +11,14 @@
             --text-color: #3a3a3a;
             --control-color: #a9a9a9;
             --control-hover-color: #8b8b8b;
-            /* 【新增】進度條顏色變數 */
             --progress-color: #4a7c85;
+            /* 【新增】為序號設定一個獨立的顏色 */
+            --number-color: #8a7968;
         }
 
         body {
             margin: 0;
-            padding-top: 25px; /* 為進度條和百分比留出空間 */
+            padding-top: 25px; 
             font-family: 'Noto Serif TC', serif;
             background-color: var(--background-color);
             color: var(--text-color);
@@ -30,7 +31,6 @@
             transition: background-color 0.5s ease;
         }
 
-        /* 【修訂】進度條容器樣式 */
         #progress-container {
             position: fixed;
             top: 0;
@@ -39,7 +39,6 @@
             z-index: 100;
         }
 
-        /* 【修訂】進度條樣式：加粗、改色 */
         #progress-bar {
             height: 8px;
             background-color: var(--progress-color);
@@ -47,7 +46,6 @@
             transition: width 0.4s ease-out;
         }
 
-        /* 【新增】進度百分比樣式 */
         #progress-percentage {
             position: absolute;
             top: 12px;
@@ -124,25 +122,41 @@
             width: 80%;
             max-width: 800px;
             height: 60%;
-            text-align: center;
             position: relative;
         }
 
+        #display-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out;
+            /* 【修訂】增加底部內邊距，將內容整體向上推移 */
+            padding-bottom: 15vh;
+            box-sizing: border-box;
+        }
+
+        #display-wrapper.fade-out {
+            opacity: 0;
+        }
+        
+        #paragraph-number {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            /* 【修訂】使用新的獨立顏色變數 */
+            color: var(--number-color); 
+            height: 2.5rem;
+            line-height: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
         #text-display {
             font-size: 1.8rem;
             line-height: 1.8;
-            height: 100%;
-            width: 100%; 
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
             text-align: left;
-            opacity: 1;
-            transition: opacity 0.8s ease-in-out;
-        }
-
-        #text-display.fade-out {
-            opacity: 0;
         }
 
         .controls {
@@ -186,14 +200,18 @@
             <textarea id="text-input" placeholder="在此貼上您的文字..."></textarea>
             <div class="timer-setting">
                 <span>每</span>
-                <input type="number" id="timer-input" value="7" min="7">
+                <input type="number" id="timer-input" value="7" min="4">
                 <span>秒翻頁</span>
             </div>
             <button id="start-button">開始閱讀</button>
         </div>
 
         <div id="reader-view">
-            <div id="text-display"></div>
+            <div id="display-wrapper">
+                <div id="paragraph-number"></div>
+                <div id="text-display"></div>
+            </div>
+
             <div class="controls">
                 <button class="control-button" id="prev-button" title="上一頁">
                     <svg viewBox="0 0 24 24">
@@ -220,7 +238,11 @@
         const textInput = document.getElementById('text-input');
         const timerInput = document.getElementById('timer-input');
         const startButton = document.getElementById('start-button');
+        
+        const displayWrapper = document.getElementById('display-wrapper');
+        const paragraphNumberDisplay = document.getElementById('paragraph-number');
         const textDisplay = document.getElementById('text-display');
+
         const prevButton = document.getElementById('prev-button');
         const nextButton = document.getElementById('next-button');
         const stayButton = document.getElementById('stay-button');
@@ -244,8 +266,6 @@
 
             const traditionalText = toTraditional(rawText);
             const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
-
-            // 【修訂】替換換行符及後方所有空格為標記，以達成刪除空格的目的
             const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
 
             segmentText(textWithMarkers);
@@ -268,43 +288,51 @@
             const regex = /(?<=[。？！\.”’』」])|(?=__NEW_PARA__)/g;
             const rawSegments = text.split(regex).filter(segment => segment && segment.trim() !== '');
             
-            textSegments = [];
+            let processedSegments = [];
             for (const segment of rawSegments) {
-                if (textSegments.length > 0 && /^\s*[」”’』]\s*$/.test(segment)) {
-                    textSegments[textSegments.length - 1] += segment;
+                if (processedSegments.length > 0 && /^\s*[」”’』]\s*$/.test(segment)) {
+                    processedSegments[processedSegments.length - 1].text += segment;
                 } else {
-                    textSegments.push(segment);
+                    const isNew = segment.startsWith('__NEW_PARA__');
+                    processedSegments.push({
+                        text: isNew ? segment.substring('__NEW_PARA__'.length) : segment,
+                        isNewPara: isNew,
+                        paraNumber: null 
+                    });
                 }
             }
-        }
 
+            let paragraphCounter = 1;
+            textSegments = processedSegments.map(segment => {
+                if (segment.isNewPara) {
+                    segment.paraNumber = paragraphCounter;
+                    paragraphCounter++;
+                }
+                return segment;
+            });
+        }
+        
         function displaySegment(index) {
             if (index >= 0 && index < textSegments.length) {
-                let currentSegment = textSegments[index];
-                let isNewParagraph = false;
+                const segmentObject = textSegments[index];
+                displayWrapper.classList.add('fade-out');
 
-                textDisplay.classList.add('fade-out');
-
-                if (currentSegment.startsWith('__NEW_PARA__')) {
-                    isNewParagraph = true;
-                    currentSegment = currentSegment.substring('__NEW_PARA__'.length);
-                }
-                
                 setTimeout(() => {
-                    let displayText = currentSegment;
-                    // 【修訂】如果是新段落，在前面加上分段符號
-                    if (isNewParagraph) {
-                        displayText = '¶ ' + displayText;
+                    if (segmentObject.paraNumber !== null) {
+                        paragraphNumberDisplay.textContent = segmentObject.paraNumber;
+                    } else {
+                        paragraphNumberDisplay.textContent = '';
                     }
-                    textDisplay.textContent = displayText;
-                    textDisplay.classList.remove('fade-out');
+
+                    textDisplay.textContent = segmentObject.text;
+                    
+                    displayWrapper.classList.remove('fade-out');
                     
                     updateProgressBar();
                 }, 800);
             }
         }
 
-        // 【修訂】更新進度條和百分比
         function updateProgressBar() {
             if (textSegments.length > 0) {
                 const percentage = ((currentIndex + 1) / textSegments.length) * 100;
