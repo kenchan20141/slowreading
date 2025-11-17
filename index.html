@@ -5,19 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>慢讀</title>
     <script src="https://unpkg.com/opencc-js@1.0.5/dist/umd/full.js"></script>
-    <!-- 引入 Google Fonts 的 Playfair Display 字體 -->
+    <!-- 引入 Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
+        /* 【修訂】全新色彩系統 */
         :root {
             --background-color: #f4f1ea;
+            --card-bg-color: #FAF8F5;
             --text-color: #3a3a3a;
-            --control-color: #a9a9a9;
-            --control-hover-color: #8b8b8b;
-            --progress-color: #4a7c85;
-            /* 為序號設定一個獨立的顏色 */
-            --number-color: #8a7968;
+            --placeholder-color: #b0a89f;
+            --subtle-text-color: #8a7968; 
+            --border-color: #dcd6c8;
+
+            /* 主點綴色 */
+            --accent-color: #4a7c85; 
+            --accent-color-hover: #3e6870;
+            --accent-text-color: #f4f1ea; 
         }
 
         body {
@@ -45,7 +50,7 @@
 
         #progress-bar {
             height: 8px;
-            background-color: var(--progress-color);
+            background-color: var(--accent-color);
             width: 0%;
             transition: width 0.4s ease-out;
         }
@@ -56,7 +61,7 @@
             right: 15px;
             font-size: 14px;
             font-weight: bold;
-            color: var(--progress-color);
+            color: var(--accent-color);
             font-family: 'Helvetica Neue', sans-serif;
         }
 
@@ -68,83 +73,180 @@
             justify-content: center;
             align-items: center;
         }
-
+        
         #settings-view {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 2rem;
-            box-sizing: border-box;
+            gap: 2rem;
             width: 100%;
             max-width: 600px;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            align-items: center;
+        }
+
+        #text-input-wrapper {
+            width: 100%;
+            height: 250px;
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            padding: 1.2rem;
+            box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), inset 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: box-shadow 0.3s ease;
+            display: flex;
+        }
+
+        #text-input-wrapper:focus-within {
+            box-shadow: 0 4px 16px var(--accent-color-hover, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         #text-input {
             width: 100%;
-            height: 200px;
-            padding: 1rem;
-            border: 1px solid var(--control-color);
-            border-radius: 5px;
-            background-color: #fff;
+            height: 100%;
+            padding: 0;
+            border: none;
+            outline: none;
+            background-color: transparent;
             font-size: 1rem;
+            line-height: 1.7;
             resize: none;
-            margin-bottom: 1.5rem;
+            color: var(--text-color);
         }
 
-        .timer-setting {
+        #text-input::placeholder {
+            color: var(--placeholder-color);
+            font-style: italic;
+        }
+        
+        .settings-controls {
             display: flex;
-            justify-content: center; /* 【新增】確保內容水平置中 */
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .timer-control {
+            text-align: center;
             margin-bottom: 2.5rem;
         }
 
-        /* 【修訂】移除圓形容器樣式 */
+        .timer-label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--subtle-text-color);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .timer-adjuster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-        /* 【修訂】數字輸入框樣式 */
-        #timer-input {
-            width: 100px; /* 給定一個固定寬度以保持排版 */
-            padding: 0;
-            text-align: center;
-            border: none;
-            background-color: transparent;
-            font-family: 'Playfair Display', serif; /* 使用藝術字體 */
-            font-size: 3.5rem; /* 進一步加大字體 */
-            font-weight: bold; /* 粗體 */
+        #timer-display {
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            font-weight: 700;
             color: var(--text-color);
-            -moz-appearance: textfield; /* 隱藏 Firefox 的數字輸入框箭頭 */
+            width: 110px;
+            text-align: center;
         }
 
-        /* 隱藏 WebKit (Chrome, Safari) 的數字輸入框箭頭 */
-        #timer-input::-webkit-outer-spin-button,
-        #timer-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        #start-button {
-            padding: 0;
-            width: 60px;
-            height: 60px;
-            background-color: var(--text-color);
-            border: none;
+        .timer-button {
+            background: none;
+            border: 1px solid var(--border-color);
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: all 0.2s ease;
             display: flex;
             justify-content: center;
             align-items: center;
+            color: var(--subtle-text-color);
+        }
+        
+        .timer-button:hover {
+            background-color: var(--accent-color);
+            color: var(--accent-text-color);
+            border-color: var(--accent-color);
+        }
+
+        .timer-button svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+        
+        /* 【修訂】全新「慢讀」按鈕設計 */
+        #start-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.75rem;
+            width: 220px;
+            padding: 0.9rem 1.5rem;
+            background-color: var(--accent-color);
+            border: none;
+            color: var(--accent-text-color);
+            border-radius: 8px;
+            font-family: 'Playfair Display', serif; /* 使用藝術字體 */
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         #start-button:hover {
-            background-color: var(--control-hover-color);
+            background-color: var(--accent-color-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         #start-button svg {
-            width: 28px;
-            height: 28px;
-            fill: var(--background-color);
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            transition: transform 0.3s ease;
+        }
+        
+        #start-button:hover svg {
+            transform: translateX(4px);
         }
 
+        /* 響應式桌面版樣式 */
+        @media (min-width: 800px) {
+            #settings-view {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 3rem;
+                max-width: 900px;
+            }
+
+            #text-input-wrapper {
+                height: 400px;
+            }
+
+            .settings-controls {
+                height: 100%;
+            }
+            
+            #timer-display {
+                 font-size: 4.5rem;
+            }
+            
+            #start-button {
+                width: 100%;
+            }
+        }
+
+        /* 閱讀介面樣式 */
         #reader-view {
             width: 80%;
             max-width: 800px;
@@ -176,7 +278,7 @@
             text-align: center;
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--number-color); 
+            color: var(--subtle-text-color); 
             height: 2.5rem;
             line-height: 2.5rem;
             margin-bottom: 1.5rem;
@@ -203,12 +305,12 @@
             cursor: pointer;
             padding: 15px;
             margin: 0 20px;
-            fill: var(--control-color);
+            fill: var(--subtle-text-color);
             transition: fill 0.3s ease;
         }
 
         .control-button:hover {
-            fill: var(--control-hover-color);
+            fill: var(--accent-color);
         }
 
         .control-button svg {
@@ -226,16 +328,29 @@
 
     <div class="container">
         <div id="settings-view">
-            <textarea id="text-input" placeholder="在此貼上您的文字..."></textarea>
-            <div class="timer-setting">
-                <!-- 【修訂】移除圓形容器 div -->
-                <input type="number" id="timer-input" value="7" min="4">
+            <div id="text-input-wrapper">
+                 <textarea id="text-input" placeholder="將您的文字貼在這裡，開啟一段沉靜的閱讀時光..."></textarea>
             </div>
-            <button id="start-button">
-                <svg viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-            </button>
+            
+            <div class="settings-controls">
+                <div class="timer-control">
+                    <span class="timer-label">翻頁秒數</span>
+                    <div class="timer-adjuster">
+                        <button class="timer-button" id="decrement-timer" title="減少秒數">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <span id="timer-display">7</span>
+                        <button class="timer-button" id="increment-timer" title="增加秒數">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                </div>
+                <button id="start-button" title="開始閱讀">
+                    <!-- 【修訂】按鈕文字和字體 -->
+                    <span>慢讀</span>
+                    <svg viewBox="0 0 24 24"><path d="M16.01 11H4v2h12.01v3L20 12l-3.99-4z"></path></svg>
+                </button>
+            </div>
         </div>
 
         <div id="reader-view">
@@ -263,9 +378,12 @@
         const settingsView = document.getElementById('settings-view');
         const readerView = document.getElementById('reader-view');
         const textInput = document.getElementById('text-input');
-        const timerInput = document.getElementById('timer-input');
         const startButton = document.getElementById('start-button');
         
+        const timerDisplay = document.getElementById('timer-display');
+        const incrementTimerBtn = document.getElementById('increment-timer');
+        const decrementTimerBtn = document.getElementById('decrement-timer');
+
         const displayWrapper = document.getElementById('display-wrapper');
         const paragraphNumberDisplay = document.getElementById('paragraph-number');
         const textDisplay = document.getElementById('text-display');
@@ -280,8 +398,21 @@
         let intervalId = null;
         let isStaying = false;
         let pageTurnInterval = 7000;
+        let currentSeconds = 7;
 
         const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' });
+
+        incrementTimerBtn.addEventListener('click', () => {
+            currentSeconds++;
+            timerDisplay.textContent = currentSeconds;
+        });
+
+        decrementTimerBtn.addEventListener('click', () => {
+            if (currentSeconds > 4) {
+                currentSeconds--;
+                timerDisplay.textContent = currentSeconds;
+            }
+        });
 
         startButton.addEventListener('click', () => {
             const rawText = textInput.value;
@@ -296,11 +427,7 @@
 
             segmentText(textWithMarkers);
             
-            pageTurnInterval = parseInt(timerInput.value, 10) * 1000;
-            if (isNaN(pageTurnInterval) || pageTurnInterval < 4000) {
-                pageTurnInterval = 4000;
-                timerInput.value = 4;
-            }
+            pageTurnInterval = currentSeconds * 1000;
 
             settingsView.style.display = 'none';
             readerView.style.display = 'flex';
