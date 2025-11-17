@@ -40,12 +40,16 @@
             transition: background-color 0.5s ease;
         }
 
+        /* 【調整】預設隱藏進度條容器 */
         #progress-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             z-index: 100;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
         }
 
         #progress-bar {
@@ -81,6 +85,7 @@
             width: 100%;
             max-width: 600px;
             padding: 1.5rem;
+            padding-bottom: 5rem;
             box-sizing: border-box;
             align-items: center;
         }
@@ -183,7 +188,6 @@
             stroke-width: 2;
         }
         
-        /* 【修訂】全新「慢讀」按鈕設計 */
         #start-button {
             display: flex;
             justify-content: center;
@@ -195,7 +199,7 @@
             border: none;
             color: var(--accent-text-color);
             border-radius: 8px;
-            font-family: 'Playfair Display', serif; /* 使用藝術字體 */
+            font-family: 'Playfair Display', serif;
             font-size: 1.2rem;
             font-weight: 700;
             letter-spacing: 1px;
@@ -218,32 +222,6 @@
         
         #start-button:hover svg {
             transform: translateX(4px);
-        }
-
-        /* 響應式桌面版樣式 */
-        @media (min-width: 800px) {
-            #settings-view {
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                gap: 3rem;
-                max-width: 900px;
-            }
-
-            #text-input-wrapper {
-                height: 400px;
-            }
-
-            .settings-controls {
-                height: 100%;
-            }
-            
-            #timer-display {
-                 font-size: 4.5rem;
-            }
-            
-            #start-button {
-                width: 100%;
-            }
         }
 
         /* 閱讀介面樣式 */
@@ -317,6 +295,53 @@
             width: 24px;
             height: 24px;
         }
+
+        .copyright-footer {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            padding: 1rem 1.5rem;
+            box-sizing: border-box;
+        }
+
+        .copyright-footer p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--subtle-text-color);
+        }
+
+        /* 響應式設計 */
+        @media (min-width: 800px) {
+            #settings-view {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 3rem;
+                max-width: 900px;
+                padding-bottom: 2rem;
+            }
+
+            #text-input-wrapper {
+                height: 400px;
+            }
+
+            .settings-controls {
+                height: 100%;
+            }
+            
+            #timer-display {
+                 font-size: 4.5rem;
+            }
+            
+            #start-button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .copyright-footer p {
+                font-size: 0.75rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -346,7 +371,6 @@
                     </div>
                 </div>
                 <button id="start-button" title="開始閱讀">
-                    <!-- 【修訂】按鈕文字和字體 -->
                     <span>慢讀</span>
                     <svg viewBox="0 0 24 24"><path d="M16.01 11H4v2h12.01v3L20 12l-3.99-4z"></path></svg>
                 </button>
@@ -374,6 +398,10 @@
         </div>
     </div>
 
+    <footer class="copyright-footer">
+        <p>Copyright © 2025 陳冠健. All rights reserved.</p>
+    </footer>
+
     <script>
         const settingsView = document.getElementById('settings-view');
         const readerView = document.getElementById('reader-view');
@@ -390,6 +418,8 @@
 
         const prevButton = document.getElementById('prev-button');
         const nextButton = document.getElementById('next-button');
+        
+        const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
         const progressPercentage = document.getElementById('progress-percentage');
 
@@ -428,6 +458,10 @@
             segmentText(textWithMarkers);
             
             pageTurnInterval = currentSeconds * 1000;
+
+            // 【調整】在進入閱讀模式時，顯示進度條
+            progressContainer.style.visibility = 'visible';
+            progressContainer.style.opacity = '1';
 
             settingsView.style.display = 'none';
             readerView.style.display = 'flex';
@@ -549,8 +583,6 @@
             isStaying = true;
         });
         readerView.addEventListener('touchend', () => { isStaying = false; });
-
     </script>
-
 </body>
 </html>
