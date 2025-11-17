@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>慢讀</title>
     <script src="https://unpkg.com/opencc-js@1.0.5/dist/umd/full.js"></script>
+    <!-- 引入 Google Fonts 的 Playfair Display 字體 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
         :root {
             --background-color: #f4f1ea;
@@ -12,7 +16,7 @@
             --control-color: #a9a9a9;
             --control-hover-color: #8b8b8b;
             --progress-color: #4a7c85;
-            /* 【新增】為序號設定一個獨立的顏色 */
+            /* 為序號設定一個獨立的顏色 */
             --number-color: #8a7968;
         }
 
@@ -89,51 +93,77 @@
 
         .timer-setting {
             display: flex;
+            justify-content: center; /* 【新增】確保內容水平置中 */
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
         }
 
+        /* 【修訂】移除圓形容器樣式 */
+
+        /* 【修訂】數字輸入框樣式 */
         #timer-input {
-            width: 50px;
-            padding: 0.5rem;
+            width: 100px; /* 給定一個固定寬度以保持排版 */
+            padding: 0;
             text-align: center;
-            border: 1px solid var(--control-color);
-            border-radius: 5px;
-            margin: 0 1rem;
+            border: none;
+            background-color: transparent;
+            font-family: 'Playfair Display', serif; /* 使用藝術字體 */
+            font-size: 3.5rem; /* 進一步加大字體 */
+            font-weight: bold; /* 粗體 */
+            color: var(--text-color);
+            -moz-appearance: textfield; /* 隱藏 Firefox 的數字輸入框箭頭 */
+        }
+
+        /* 隱藏 WebKit (Chrome, Safari) 的數字輸入框箭頭 */
+        #timer-input::-webkit-outer-spin-button,
+        #timer-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         #start-button {
-            padding: 0.8rem 2rem;
-            font-size: 1rem;
+            padding: 0;
+            width: 60px;
+            height: 60px;
             background-color: var(--text-color);
-            color: var(--background-color);
             border: none;
-            border-radius: 5px;
+            border-radius: 50%;
             cursor: pointer;
             transition: background-color 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #start-button:hover {
             background-color: var(--control-hover-color);
         }
 
+        #start-button svg {
+            width: 28px;
+            height: 28px;
+            fill: var(--background-color);
+        }
+
         #reader-view {
-            display: none;
             width: 80%;
             max-width: 800px;
-            height: 60%;
+            height: 100%; 
             position: relative;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         #display-wrapper {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            height: 100%;
+            height: 60%;
             width: 100%;
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
-            /* 【修訂】增加底部內邊距，將內容整體向上推移 */
             padding-bottom: 15vh;
             box-sizing: border-box;
         }
@@ -146,7 +176,6 @@
             text-align: center;
             font-size: 1.5rem;
             font-weight: bold;
-            /* 【修訂】使用新的獨立顏色變數 */
             color: var(--number-color); 
             height: 2.5rem;
             line-height: 2.5rem;
@@ -161,7 +190,7 @@
 
         .controls {
             position: absolute;
-            bottom: -80px;
+            bottom: 60px;
             width: 100%;
             display: flex;
             justify-content: center;
@@ -199,11 +228,14 @@
         <div id="settings-view">
             <textarea id="text-input" placeholder="在此貼上您的文字..."></textarea>
             <div class="timer-setting">
-                <span>每</span>
+                <!-- 【修訂】移除圓形容器 div -->
                 <input type="number" id="timer-input" value="7" min="4">
-                <span>秒翻頁</span>
             </div>
-            <button id="start-button">開始閱讀</button>
+            <button id="start-button">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
         </div>
 
         <div id="reader-view">
@@ -216,11 +248,6 @@
                 <button class="control-button" id="prev-button" title="上一頁">
                     <svg viewBox="0 0 24 24">
                         <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                    </svg>
-                </button>
-                <button class="control-button" id="stay-button" title="停留">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M6 6h12v12H6z"/>
                     </svg>
                 </button>
                 <button class="control-button" id="next-button" title="下一頁">
@@ -245,7 +272,6 @@
 
         const prevButton = document.getElementById('prev-button');
         const nextButton = document.getElementById('next-button');
-        const stayButton = document.getElementById('stay-button');
         const progressBar = document.getElementById('progress-bar');
         const progressPercentage = document.getElementById('progress-percentage');
 
@@ -277,7 +303,7 @@
             }
 
             settingsView.style.display = 'none';
-            readerView.style.display = 'block';
+            readerView.style.display = 'flex';
             
             currentIndex = 0;
             displaySegment(currentIndex);
@@ -382,12 +408,20 @@
             goToNextSegment();
             startAutoPageTurn();
         });
-
-        stayButton.addEventListener('mousedown', () => { isStaying = true; });
-        stayButton.addEventListener('mouseup', () => { isStaying = false; });
-        stayButton.addEventListener('mouseleave', () => { isStaying = false; });
-        stayButton.addEventListener('touchstart', (e) => { e.preventDefault(); isStaying = true; });
-        stayButton.addEventListener('touchend', () => { isStaying = false; });
+        
+        readerView.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.control-button')) return;
+            isStaying = true;
+        });
+        readerView.addEventListener('mouseup', () => { isStaying = false; });
+        readerView.addEventListener('mouseleave', () => { isStaying = false; });
+        
+        readerView.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.control-button')) return;
+            e.preventDefault(); 
+            isStaying = true;
+        });
+        readerView.addEventListener('touchend', () => { isStaying = false; });
 
     </script>
 
