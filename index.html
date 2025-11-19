@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>慢讀</title>
     <script src="https://unpkg.com/opencc-js@1.0.5/dist/umd/full.js"></script>
     <!-- 引入 Google Fonts -->
@@ -35,9 +35,12 @@
             box-sizing: border-box;
             padding: 1rem;
             transition: background-color 0.5s ease;
+            /* 防止長按選取文字干擾閱讀體驗 */
+            user-select: none; 
+            -webkit-user-select: none;
         }
 
-        /* 進度條 */
+        /* 進度條容器 */
         #progress-container {
             position: fixed;
             top: 0;
@@ -50,12 +53,13 @@
         }
 
         #progress-bar {
-            height: 8px;
+            height: 6px;
             background-color: var(--accent-color);
             width: 0%;
             transition: width 0.4s ease-out;
         }
 
+        /* 進度百分比文字 */
         #progress-percentage {
             position: absolute;
             top: 12px;
@@ -64,17 +68,20 @@
             font-weight: bold;
             color: var(--accent-color);
             font-family: 'Helvetica Neue', sans-serif;
+            pointer-events: none;
         }
 
+        /* 主容器 */
         .container {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 3vh 0;
+            position: relative;
         }
         
-        /* 設定頁面 (主頁) */
+        /* --- 設定頁面 (主頁) --- */
         #settings-view {
             display: flex;
             flex-direction: column;
@@ -105,7 +112,7 @@
         }
 
         #text-input-wrapper:focus-within {
-            box-shadow: 0 4px 16px var(--accent-color-hover, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 16px rgba(74, 124, 133, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
         #text-input {
@@ -119,6 +126,9 @@
             line-height: 1.7;
             resize: none;
             color: var(--text-color);
+            font-family: 'Noto Serif TC', serif;
+            user-select: auto; /* 輸入框仍需可選取 */
+            -webkit-user-select: auto;
         }
 
         #text-input::placeholder {
@@ -260,31 +270,33 @@
             fill: currentColor;
         }
 
-        /* 閱讀介面 */
+        /* --- 閱讀介面 (全屏覆蓋) --- */
         #reader-view {
-            width: 80%;
-            max-width: 800px;
-            height: 100vh; 
             position: fixed;
             top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            display: none;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--background-color);
+            z-index: 50;
+            display: none; /* 初始隱藏 */
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            cursor: pointer; /* 提示可點擊 */
         }
 
         #display-wrapper {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            height: 60%;
-            width: 100%;
+            align-items: center;
+            width: 80%;
+            max-width: 800px;
+            height: 70%; /* 預留空間給手勢區域 */
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
-            padding-bottom: 15vh;
-            box-sizing: border-box;
+            pointer-events: none; /* 讓點擊事件穿透文字，直接作用於 reader-view */
         }
 
         #display-wrapper.fade-out {
@@ -293,79 +305,86 @@
         
         #paragraph-number {
             text-align: center;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: var(--subtle-text-color); 
-            height: 2.5rem;
-            line-height: 2.5rem;
             margin-bottom: 1.5rem;
+            opacity: 0.6;
         }
         
         #text-display {
             font-size: 1.8rem;
             line-height: 1.8;
             text-align: left;
-        }
-
-        /* 底部控制列 */
-        .controls {
-            position: absolute;
-            bottom: 60px;
             width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 0.5s ease;
+        }
+        
+        /* 暫停提示 (已修改為上方置中) */
+        #pause-indicator {
+            position: absolute;
+            top: 25px; /* 稍微留一點距離 */
+            left: 50%;
+            transform: translateX(-50%); /* 水平置中關鍵 */
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            background-color: var(--background-color);
+            z-index: 150;
         }
 
-        .control-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 15px;
-            margin: 0 20px;
-            fill: var(--subtle-text-color);
-            transition: fill 0.3s ease;
-        }
-
-        .control-button:hover {
-            fill: var(--accent-color);
-        }
-
-        .control-button svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        /* 結束時的動作介面 */
+        /* --- 完成介面 --- */
         #completion-view {
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 60%;
+            gap: 2rem;
             width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: var(--background-color);
+            z-index: 60; /* 蓋在閱讀器之上 */
             opacity: 0;
-            transition: opacity 1s ease;
+            transition: opacity 0.8s ease;
         }
 
         #completion-view.visible {
-            display: flex;
             opacity: 1;
         }
 
-        .completion-actions-container {
+        .completion-message {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+
+        .completion-actions {
             display: flex;
             gap: 3rem;
             align-items: center;
+        }
+
+        .completion-btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .completion-btn {
             background: transparent;
             border: 2px solid var(--border-color);
             border-radius: 50%;
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -382,22 +401,30 @@
         }
 
         .completion-btn svg {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             fill: currentColor;
         }
-
-        .completion-btn.saved {
-             background-color: var(--accent-color);
-             color: var(--accent-text-color);
-             border-color: var(--accent-color);
-        }
         
+        .completion-label {
+            font-size: 0.9rem;
+            color: var(--subtle-text-color);
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+
+        .completion-btn-wrapper:hover .completion-label {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 頁尾 --- */
         .copyright-footer {
             bottom: 0;
-            right: 0;
-            padding: 1rem 1.5rem;
-            box-sizing: border-box;
+            padding: 2rem 0;
+            text-align: center;
+            width: 100%;
         }
 
         .copyright-footer p {
@@ -406,7 +433,7 @@
             color: var(--subtle-text-color);
         }
         
-        /* 彈出視窗 (Modal) */
+        /* --- 彈出視窗 (Modal) --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -471,7 +498,7 @@
         #history-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border-color); transition: background-color 0.3s ease; }
         .history-item:last-child { border-bottom: none; }
-        .history-item-title { cursor: pointer; flex-grow: 1; margin-right: 1rem; }
+        .history-item-title { cursor: pointer; flex-grow: 1; margin-right: 1rem; font-weight: bold; color: var(--text-color); }
         .history-item-title:hover { color: var(--accent-color); }
         .delete-history-button { background: none; border: none; cursor: pointer; color: var(--subtle-text-color); padding: 0.5rem; }
         .delete-history-button:hover { color: var(--danger-color); }
@@ -487,20 +514,13 @@
         #cancel-save-button { background-color: transparent; color: var(--subtle-text-color); border: 1px solid var(--border-color); }
         #cancel-save-button:hover { background-color: var(--card-bg-color); }
 
+        /* 響應式設計 */
         @media (min-width: 800px) {
             #settings-view { display: grid; grid-template-columns: 2fr 1fr; gap: 3rem; max-width: 900px; }
             #text-input-wrapper { height: 400px; }
             .settings-controls { height: 100%; }
             #timer-display { font-size: 4.5rem; }
             #start-button { width: 100%; }
-        }
-        
-        @media (max-width: 600px) {
-            .copyright-footer p {
-                font-size: 0.75rem;
-            }
-            .completion-actions-container { gap: 1.5rem; }
-            .completion-btn { width: 60px; height: 60px; }
         }
     </style>
 </head>
@@ -512,6 +532,7 @@
     </div>
 
     <div class="container">
+        <!-- 設定頁面 -->
         <div id="settings-view">
             <div id="main-input-area">
                 <div class="secondary-actions">
@@ -520,7 +541,7 @@
                     </button>
                 </div>
                 <div id="text-input-wrapper">
-                     <textarea id="text-input" placeholder="將您的文字貼在這裡，開啟一段沉靜的閱讀時光..."></textarea>
+                     <textarea id="text-input" placeholder="將您的文字貼在這裡，開啟一段沉靜的閱讀時光...&#10;&#10;貼心提示：&#10;進入閱讀後：&#10;• 點擊左側：上一頁&#10;• 點擊右側：下一頁&#10;• 長按螢幕：暫停"></textarea>
                 </div>
             </div>
             
@@ -547,36 +568,37 @@
                 <p>Copyright © 2025 陳冠健. All rights reserved.</p>
             </footer>
         </div>
+    </div>
 
-        <div id="reader-view">
-            <div id="display-wrapper">
-                <div id="paragraph-number"></div>
-                <div id="text-display"></div>
-            </div>
+    <!-- 閱讀介面 (全屏) -->
+    <div id="reader-view">
+        <div id="pause-indicator">暫停</div>
+        <div id="display-wrapper">
+            <div id="paragraph-number"></div>
+            <div id="text-display"></div>
+        </div>
+    </div>
 
-            <!-- 閱讀結束後的動作介面 -->
-            <div id="completion-view">
-                <div class="completion-actions-container">
-                    <button id="end-save-button" class="completion-btn" title="儲存文章">
-                        <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                    </button>
-                    <button id="end-home-button" class="completion-btn" title="返回主頁">
-                        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="controls" id="reader-controls">
-                <button class="control-button" id="prev-button" title="上一頁">
-                    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    <!-- 完成介面 (覆蓋在閱讀介面上) -->
+    <div id="completion-view">
+        <div class="completion-message">完讀</div>
+        <div class="completion-actions">
+            <div class="completion-btn-wrapper">
+                <button id="end-save-button" class="completion-btn" title="儲存文章">
+                    <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
                 </button>
-                <button class="control-button" id="next-button" title="下一頁">
-                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+                <span class="completion-label">儲存</span>
+            </div>
+            <div class="completion-btn-wrapper">
+                <button id="end-home-button" class="completion-btn" title="返回主頁">
+                    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 </button>
+                <span class="completion-label">主頁</span>
             </div>
         </div>
     </div>
     
+    <!-- 歷史紀錄 Modal -->
     <div id="history-view" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -587,6 +609,7 @@
         </div>
     </div>
     
+    <!-- 儲存 Modal -->
     <div id="save-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -603,9 +626,11 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM Elements
+            // --- DOM 元素參考 ---
             const settingsView = document.getElementById('settings-view');
             const readerView = document.getElementById('reader-view');
+            const completionView = document.getElementById('completion-view');
+            
             const textInput = document.getElementById('text-input');
             const startButton = document.getElementById('start-button');
             const historyButton = document.getElementById('history-button');
@@ -613,25 +638,19 @@
             const incrementTimerBtn = document.getElementById('increment-timer');
             const decrementTimerBtn = document.getElementById('decrement-timer');
             
-            // Reader Components
             const displayWrapper = document.getElementById('display-wrapper');
             const paragraphNumberDisplay = document.getElementById('paragraph-number');
             const textDisplay = document.getElementById('text-display');
-            const readerControls = document.getElementById('reader-controls');
-            const prevButton = document.getElementById('prev-button');
-            const nextButton = document.getElementById('next-button');
+            const pauseIndicator = document.getElementById('pause-indicator');
             
-            // Completion Components
-            const completionView = document.getElementById('completion-view');
             const endSaveButton = document.getElementById('end-save-button');
             const endHomeButton = document.getElementById('end-home-button');
 
-            // Progress
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const progressPercentage = document.getElementById('progress-percentage');
             
-            // Modals
+            // Modal 元素
             const historyView = document.getElementById('history-view');
             const closeHistoryButton = document.getElementById('close-history-button');
             const historyList = document.getElementById('history-list');
@@ -641,175 +660,238 @@
             const cancelSaveButton = document.getElementById('cancel-save-button');
             const saveTitleInput = document.getElementById('save-title-input');
 
-            // State
-            let textSegments = [], currentIndex = 0, intervalId = null, isStaying = false, currentSeconds = 7;
+            // --- 狀態變數 ---
+            let textSegments = [];
+            let currentIndex = 0;
+            let intervalId = null;
+            let currentSeconds = 7;
+            let isReading = false;
+            
+            // 觸控邏輯變數
+            let pressTimer = null;
+            const LONG_PRESS_THRESHOLD = 250; // 毫秒：超過此時間視為長按/暫停，否則為點擊
+
             const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' });
             const STORAGE_KEY = 'slowReaderHistory';
 
-            // Functions
+            // --- 核心功能 ---
+
+            // 1. 開始閱讀流程
             const startReadingProcess = (rawText) => {
                 closeAllModals();
+                
+                // 轉換繁體並正規化標點
                 const traditionalText = toTraditional(rawText);
-                // 將常用的全形引號統一處理，避免 OpenCC 遺漏
                 const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
-                // 加入段落標記
+                // 標記換行
                 const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
+                
                 segmentText(textWithMarkers);
                 
-                // Reset UI for new reading
-                completionView.classList.remove('visible');
-                completionView.style.display = 'none';
-                displayWrapper.style.display = 'flex';
-                displayWrapper.classList.remove('fade-out');
-                readerControls.style.display = 'flex';
-                readerControls.style.opacity = '1';
+                if (textSegments.length === 0) return;
 
-                const pageTurnInterval = currentSeconds * 1000;
-                progressContainer.style.visibility = 'visible';
-                progressContainer.style.opacity = '1';
+                // 切換 UI
                 settingsView.style.display = 'none';
                 readerView.style.display = 'flex';
+                progressContainer.style.visibility = 'visible';
+                progressContainer.style.opacity = '1';
+                
+                // 重置狀態
+                completionView.style.display = 'none';
+                completionView.classList.remove('visible');
+                displayWrapper.style.display = 'flex';
+                displayWrapper.classList.remove('fade-out');
                 
                 currentIndex = 0;
+                isReading = true;
                 displaySegment(currentIndex);
-                startAutoPageTurn(pageTurnInterval);
+                startAutoPageTurn();
             };
 
+            // 2. 文字切分邏輯
             const segmentText = (text) => {
-                // 1. 初步切割：依照常見標點進行切割
                 const regex = /(?<=[。？！\.”’』」])|(?=__NEW_PARA__)/g;
                 const rawSegments = text.split(regex).filter(s => s && s.trim() !== '');
 
-                // 2. 邏輯合併：檢查被切斷的標點 (處理 "」。" 這種情況)
                 let mergedSegments = [];
                 for (let i = 0; i < rawSegments.length; i++) {
                     let current = rawSegments[i];
-
-                    // 如果是新段落標記，直接加入，不進行前向合併
                     if (current.startsWith('__NEW_PARA__')) {
                         mergedSegments.push(current);
                         continue;
                     }
 
-                    // 檢查當前片段是否以「避頭點」開始 (如 。 」 ？ ！ 等)
-                    // 這表示上一個片段被不正確地切斷了
-                    // 條件：
-                    // 1. `mergedSegments` 不為空
-                    // 2. 上一個片段不是「新段落標記」 (不跨段落合併)
-                    // 3. 當前片段以標點符號開頭
-                    
+                    // 處理標點符號被切斷的情況 (如 "」。")
                     while (mergedSegments.length > 0 && !mergedSegments[mergedSegments.length-1].startsWith('__NEW_PARA__')) {
-                        // 匹配開頭的連續標點符號
                         const punctuationMatch = current.match(/^(\s*[。？！\.”’』」]+)(.*)/s);
-                        
                         if (punctuationMatch) {
-                            const punctuations = punctuationMatch[1]; // 例如 "」。" 或 "。"
-                            const rest = punctuationMatch[2];         // 剩餘文字
-                            
-                            // 將標點符號追加到上一個片段
-                            mergedSegments[mergedSegments.length - 1] += punctuations;
-                            
-                            // 更新 current 為剩餘文字
-                            current = rest;
-                            
-                            // 如果剩餘文字為空，則不需要再處理這個 segment
+                            mergedSegments[mergedSegments.length - 1] += punctuationMatch[1];
+                            current = punctuationMatch[2];
                             if (!current) break;
                         } else {
-                            // 沒有開頭標點，停止檢查
                             break;
                         }
                     }
-
-                    // 如果 current 還有內容，則作為新的一頁加入
-                    if (current) {
-                        mergedSegments.push(current);
-                    }
+                    if (current) mergedSegments.push(current);
                 }
 
-                // 3. 轉換為物件格式並加上段落編號
                 let processedSegments = [];
                 let pCounter = 1;
-                
                 for (const segment of mergedSegments) {
                     const isNew = segment.startsWith('__NEW_PARA__');
                     processedSegments.push({ 
                         text: isNew ? segment.substring(12) : segment, 
-                        isNewPara: isNew, 
                         paraNumber: isNew ? pCounter++ : null 
                     });
                 }
-                
                 textSegments = processedSegments;
             };
 
+            // 3. 顯示內容
             const displaySegment = (index) => {
                 if (index >= 0 && index < textSegments.length) {
                     const segObj = textSegments[index];
                     displayWrapper.classList.add('fade-out');
+                    
                     setTimeout(() => {
                         paragraphNumberDisplay.textContent = segObj.paraNumber !== null ? segObj.paraNumber : '';
                         textDisplay.textContent = segObj.text;
                         displayWrapper.classList.remove('fade-out');
                         updateProgressBar();
-                    }, 800);
+                    }, 600); // 配合 fade-out 動畫時間
                 }
             };
 
+            // 4. 完成頁面
             const showCompletionView = () => {
                 stopAutoPageTurn();
-                displayWrapper.classList.add('fade-out');
-                readerControls.style.opacity = '0';
-                
-                // Set progress to 100%
+                isReading = false;
                 progressBar.style.width = `100%`;
                 progressPercentage.textContent = `100%`;
-
+                
+                displayWrapper.classList.add('fade-out');
                 setTimeout(() => {
                     displayWrapper.style.display = 'none';
-                    readerControls.style.display = 'none';
                     completionView.style.display = 'flex';
-                    // Force reflow for transition
-                    void completionView.offsetWidth; 
+                    // 強制重繪以觸發 CSS transition
+                    void completionView.offsetWidth;
                     completionView.classList.add('visible');
-                }, 800);
+                }, 600);
             };
-            
+
+            // 5. 返回主頁
             const returnToHome = () => {
                 stopAutoPageTurn();
+                isReading = false;
                 progressContainer.style.opacity = '0';
-                setTimeout(() => progressContainer.style.visibility = 'hidden', 500);
+                setTimeout(() => {
+                    progressContainer.style.visibility = 'hidden';
+                    progressBar.style.width = '0%';
+                    progressPercentage.textContent = '0%';
+                }, 500);
                 
                 readerView.style.display = 'none';
-                settingsView.style.display = 'flex'; 
+                settingsView.style.display = 'grid'; 
+                if(window.innerWidth < 800) settingsView.style.display = 'flex';
+                
                 settingsView.style.opacity = '1';
             };
 
+            // 6. 進度條更新
             const updateProgressBar = () => {
                 const perc = textSegments.length > 0 ? ((currentIndex + 1) / textSegments.length) * 100 : 0;
                 progressBar.style.width = `${perc}%`;
                 progressPercentage.textContent = `${Math.round(perc)}%`;
             };
 
-            const startAutoPageTurn = (interval) => {
+            // 7. 計時器控制
+            const startAutoPageTurn = () => {
                 if (intervalId) clearInterval(intervalId);
-                intervalId = setInterval(() => { if (!isStaying) goToNextSegment(); }, interval);
+                pauseIndicator.style.opacity = '0';
+                intervalId = setInterval(() => {
+                    goToNextSegment();
+                }, currentSeconds * 1000);
             };
 
-            const stopAutoPageTurn = () => clearInterval(intervalId);
-            
+            const stopAutoPageTurn = () => {
+                if (intervalId) clearInterval(intervalId);
+                intervalId = null;
+                if(isReading) pauseIndicator.style.opacity = '1';
+            };
+
+            // 8. 翻頁邏輯
             const goToNextSegment = () => {
                 if (currentIndex < textSegments.length - 1) {
-                    displaySegment(++currentIndex);
+                    currentIndex++;
+                    displaySegment(currentIndex);
                 } else {
-                    // End of text
+                    // 如果已經是最後一頁，再翻頁則進入完成頁面
                     showCompletionView();
                 }
             };
             
-            const goToPrevSegment = () => (currentIndex > 0) ? displaySegment(--currentIndex) : null;
+            const goToPrevSegment = () => {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    displaySegment(currentIndex);
+                }
+            };
 
+            // --- 觸控與點擊互動邏輯 (Left=Prev, Right=Next, Hold=Pause) ---
+            
+            const handleInteractStart = (e) => {
+                // 忽略完成頁面上的按鈕點擊
+                if (e.target.closest('button') || !isReading) return;
+                
+                // 按下即暫停
+                stopAutoPageTurn();
+                pressTimer = Date.now();
+            };
+
+            const handleInteractEnd = (e) => {
+                if (e.target.closest('button') || !isReading) return;
+                if (!pressTimer) return;
+
+                const duration = Date.now() - pressTimer;
+                pressTimer = null;
+
+                // 判斷是短按(點擊)還是長按(暫停後釋放)
+                if (duration < LONG_PRESS_THRESHOLD) {
+                    // 短按：執行翻頁
+                    const screenWidth = window.innerWidth;
+                    // 取得點擊位置 (兼容 touch 和 mouse)
+                    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+                    
+                    if (clientX < screenWidth / 2) {
+                        goToPrevSegment();
+                    } else {
+                        goToNextSegment();
+                    }
+                    // 翻頁後重啟計時器
+                    startAutoPageTurn();
+                } else {
+                    // 長按釋放：僅恢復計時，不翻頁
+                    startAutoPageTurn();
+                }
+            };
+
+            // 綁定全屏觸控事件
+            // Mouse events
+            readerView.addEventListener('mousedown', handleInteractStart);
+            readerView.addEventListener('mouseup', handleInteractEnd);
+            readerView.addEventListener('mouseleave', () => {
+                // 滑鼠移出視窗，視為釋放並恢復
+                if (isReading && !intervalId) startAutoPageTurn();
+            });
+
+            // Touch events
+            readerView.addEventListener('touchstart', handleInteractStart, {passive: true});
+            readerView.addEventListener('touchend', handleInteractEnd, {passive: true});
+
+
+            // --- 歷史紀錄與儲存功能 ---
             const getHistory = () => JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-            const saveHistory = (history) => localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+            const saveHistoryToStorage = (history) => localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
 
             const renderHistoryList = () => {
                 const history = getHistory();
@@ -821,69 +903,69 @@
                 history.forEach(item => {
                     const li = document.createElement('li');
                     li.className = 'history-item';
-                    li.innerHTML = `<span class="history-item-title">${item.title}</span><button class="delete-history-button" data-id="${item.id}" title="刪除紀錄"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
+                    li.innerHTML = `
+                        <span class="history-item-title">${item.title}</span>
+                        <button class="delete-history-button" data-id="${item.id}" title="刪除紀錄">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>`;
                     li.querySelector('.history-item-title').addEventListener('click', () => {
                         textInput.value = item.content; 
                         startReadingProcess(item.content);
                     });
                     li.querySelector('.delete-history-button').addEventListener('click', (e) => {
                         e.stopPropagation();
-                        deleteArticle(Number(e.currentTarget.dataset.id));
+                        const id = Number(e.currentTarget.dataset.id);
+                        const newHistory = getHistory().filter(h => h.id !== id);
+                        saveHistoryToStorage(newHistory);
+                        renderHistoryList();
                     });
                     historyList.appendChild(li);
                 });
             };
 
-            const deleteArticle = (id) => {
-                let history = getHistory().filter(item => item.id !== id);
-                saveHistory(history);
-                renderHistoryList();
-            };
-            
             const showModal = (modal) => modal.classList.add('visible');
             const hideModal = (modal) => modal.classList.remove('visible');
             const closeAllModals = () => [historyView, saveModal].forEach(hideModal);
 
-            // Event Listeners
+            // --- 事件監聽綁定 ---
+            
+            // 計時器調整
             incrementTimerBtn.addEventListener('click', () => timerDisplay.textContent = ++currentSeconds);
             decrementTimerBtn.addEventListener('click', () => { if (currentSeconds > 4) timerDisplay.textContent = --currentSeconds; });
-            startButton.addEventListener('click', () => textInput.value.trim() ? startReadingProcess(textInput.value) : alert('請輸入文字內容'));
             
-            // Navigation Controls
-            prevButton.addEventListener('click', () => { goToPrevSegment(); startAutoPageTurn(currentSeconds * 1000); });
-            nextButton.addEventListener('click', () => { goToNextSegment(); startAutoPageTurn(currentSeconds * 1000); });
-
-            readerView.addEventListener('mousedown', (e) => { if (!e.target.closest('.control-button') && !e.target.closest('.completion-btn')) isStaying = true; });
-            ['mouseup', 'mouseleave'].forEach(evt => readerView.addEventListener(evt, () => isStaying = false));
-            readerView.addEventListener('touchstart', (e) => { if (!e.target.closest('.control-button') && !e.target.closest('.completion-btn')) { isStaying = true; }});
-            readerView.addEventListener('touchend', () => isStaying = false);
-
-            // History & Save
+            // 開始按鈕
+            startButton.addEventListener('click', () => {
+                if(textInput.value.trim()) {
+                    startReadingProcess(textInput.value);
+                } else {
+                    alert('請輸入文字內容');
+                }
+            });
+            
+            // 歷史紀錄按鈕
             historyButton.addEventListener('click', () => { renderHistoryList(); showModal(historyView); });
             
-            // End Page Actions
+            // 完成頁面按鈕
             endHomeButton.addEventListener('click', returnToHome);
             endSaveButton.addEventListener('click', () => {
-                if (!textInput.value.trim()) { alert('內容為空，無法儲存。'); return; }
                 saveTitleInput.value = '未命名文章';
                 showModal(saveModal);
                 saveTitleInput.focus();
             });
 
+            // 儲存 Modal 按鈕
             confirmSaveButton.addEventListener('click', () => {
                 const title = saveTitleInput.value.trim();
-                const content = textInput.value.trim();
+                const content = textInput.value.trim(); 
+                
                 if (title && content) {
                     let history = getHistory();
                     history.unshift({ id: Date.now(), title, content });
-                    saveHistory(history);
+                    saveHistoryToStorage(history);
                     hideModal(saveModal);
-                    
-                    // Feedback on the save button
-                    endSaveButton.classList.add('saved');
-                    setTimeout(() => endSaveButton.classList.remove('saved'), 1500);
+                    alert('儲存成功！');
                 } else {
-                    alert('篇名不能為空！');
+                    alert('篇名或內容不能為空！');
                 }
             });
 
