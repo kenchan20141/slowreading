@@ -39,7 +39,7 @@
             align-items: flex-start;
             min-height: 100vh;
             padding: 1rem;
-            transition: background-color 0.8s ease; /* 背景切換更慢 */
+            transition: background-color 0.8s ease;
             /* 禁止頁面選取文字 */
             user-select: none; 
             -webkit-user-select: none;
@@ -56,14 +56,14 @@
             z-index: 100;
             visibility: hidden;
             opacity: 0;
-            transition: opacity 0.8s ease-in-out; /* 放慢顯示消失速度 */
+            transition: opacity 0.8s ease-in-out;
         }
 
         #progress-bar {
             height: 6px;
             background-color: var(--accent-color);
             width: 0%;
-            transition: width 0.6s ease-out; /* 放慢進度條跑動速度 */
+            transition: width 0.6s ease-out;
         }
 
         /* 進度百分比文字 */
@@ -97,7 +97,7 @@
             max-width: 600px;
             align-items: center;
             opacity: 1;
-            transition: opacity 0.8s ease-in-out; /* 頁面切換淡入淡出 */
+            transition: opacity 0.8s ease-in-out;
         }
         
         #main-input-area {
@@ -291,7 +291,7 @@
             align-items: center; 
             justify-content: flex-start; 
             cursor: pointer;
-            /* 關鍵：禁止瀏覽器處理觸控動作，減少干擾 */
+            /* 禁止瀏覽器處理觸控動作 */
             touch-action: none;
         }
 
@@ -302,11 +302,7 @@
             justify-content: center;
             width: 80%;
             max-width: 800px;
-            
-            /* --- 用戶教學：在此調整文字高度 --- */
             margin-top: 25vh; 
-            /* -------------------------------- */
-
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             pointer-events: none; 
@@ -362,10 +358,13 @@
             position: absolute;
             top: 0;
             left: 0;
+            /* 保持背景，但允許點擊穿透 */
             background-color: var(--background-color);
             z-index: 60; 
             opacity: 0;
             transition: opacity 0.8s ease; 
+            /* 關鍵：允許點擊穿透到下層的 reader-view，除非點擊到按鈕 */
+            pointer-events: none; 
         }
 
         #completion-view.visible {
@@ -376,6 +375,8 @@
             display: flex;
             gap: 3rem;
             align-items: center;
+            /* 關鍵：按鈕區域恢復可點擊 */
+            pointer-events: auto; 
         }
 
         .completion-btn-wrapper {
@@ -453,7 +454,6 @@
             z-index: 200;
             opacity: 0;
             visibility: hidden;
-            /* 動畫時間為 0.6s，更加緩慢柔和 */
             transition: opacity 0.6s ease, visibility 0.6s ease;
             padding: 1rem;
         }
@@ -527,19 +527,14 @@
             .settings-controls { height: 100%; }
             #timer-display { font-size: 4.5rem; }
             #start-button { width: 100%; }
-            
-            /* --- 用戶教學：電腦版的高度微調 --- */
             #display-wrapper { margin-top: 30vh; } 
-            /* -------------------------------- */
         }
 
         /* 手機版特別微調 */
         @media (max-width: 799px) {
-             /* --- 用戶教學：手機版的高度微調 --- */
              #display-wrapper { 
                  margin-top: 28vh; 
              }
-             /* -------------------------------- */
         }
     </style>
 </head>
@@ -684,6 +679,7 @@
             let intervalId = null;
             let currentSeconds = 7;
             let isReading = false;
+            let inCompletionMode = false; // 新增：判斷是否處於完成頁面
             
             // 觸控邏輯變數
             let pressTimer = null;
@@ -701,6 +697,7 @@
                 closeAllModals();
                 
                 const traditionalText = toTraditional(rawText);
+                // 統一引號格式
                 const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
                 const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
                 
@@ -709,7 +706,7 @@
                 if (textSegments.length === 0) return;
 
                 // 切換 UI
-                settingsView.style.opacity = '0'; // 先淡出設定頁
+                settingsView.style.opacity = '0';
                 
                 setTimeout(() => {
                     settingsView.style.display = 'none';
@@ -725,14 +722,17 @@
                     
                     currentIndex = 0;
                     isReading = true;
+                    inCompletionMode = false;
                     displaySegment(currentIndex);
                     startAutoPageTurn();
                 }, 500);
             };
 
-            // 2. 文字切分邏輯
+            // 2. 文字切分邏輯 (修正：不以關引號作為切分點)
             const segmentText = (text) => {
-                const regex = /(?<=[。？！\.”’』」])|(?=__NEW_PARA__)/g;
+                // 修改後的 Regex：只在句號、問號、感嘆號後，或者新段落標記前切分。
+                // 移除了對 」 』 ” 的偵測，防止關引號造成斷頁。
+                const regex = /(?<=[。？！\.])|(?=__NEW_PARA__)/g;
                 const rawSegments = text.split(regex).filter(s => s && s.trim() !== '');
 
                 let mergedSegments = [];
@@ -743,7 +743,10 @@
                         continue;
                     }
 
+                    // 處理「孤兒標點」：如果某段只包含標點符號或關引號（因為前面的邏輯切分後遺留），
+                    // 則將其合併到上一段。
                     while (mergedSegments.length > 0 && !mergedSegments[mergedSegments.length-1].startsWith('__NEW_PARA__')) {
+                        // 檢查當前段落是否以標點開頭
                         const punctuationMatch = current.match(/^(\s*[。？！\.”’』」]+)(.*)/s);
                         if (punctuationMatch) {
                             mergedSegments[mergedSegments.length - 1] += punctuationMatch[1];
@@ -786,10 +789,13 @@
             // 4. 完成頁面
             const showCompletionView = () => {
                 stopAutoPageTurn();
+                inCompletionMode = true; // 進入完成模式
                 isReading = false;
                 progressBar.style.width = `100%`;
                 progressPercentage.textContent = `100%`;
                 
+                // 不隱藏文字 DisplayWrapper，而是讓它留在底部，但被 CompletionView 蓋住(透過透明度)
+                // 或者更好的做法：淡出文字，淡入完成介面
                 displayWrapper.classList.add('fade-out');
                 setTimeout(() => {
                     displayWrapper.style.display = 'none';
@@ -799,18 +805,36 @@
                 }, 600);
             };
 
-            // 5. 返回主頁 (優化淡出效果)
+            // 4.1 從完成頁面返回閱讀 (點擊上一頁)
+            const hideCompletionAndResume = () => {
+                inCompletionMode = false;
+                completionView.classList.remove('visible');
+                
+                setTimeout(() => {
+                    completionView.style.display = 'none';
+                    displayWrapper.style.display = 'flex';
+                    // 強制重繪後移除 fade-out，產生淡入效果
+                    requestAnimationFrame(() => {
+                        displayWrapper.classList.remove('fade-out');
+                    });
+                    
+                    // 恢復狀態
+                    isReading = true;
+                    updateProgressBar();
+                    startAutoPageTurn();
+                }, 600); // 與 CSS transition 一致
+            };
+
+            // 5. 返回主頁
             const returnToHome = () => {
                 stopAutoPageTurn();
                 isReading = false;
+                inCompletionMode = false;
                 
-                // 1. 先將當前畫面淡出
                 completionView.style.opacity = '0';
                 progressContainer.style.opacity = '0';
 
-                // 2. 等待淡出動畫完成 (0.8s) 後再切換 display
                 setTimeout(() => {
-                    // 隱藏元素
                     completionView.style.display = 'none';
                     completionView.classList.remove('visible');
                     progressContainer.style.visibility = 'hidden';
@@ -818,7 +842,6 @@
                     progressPercentage.textContent = '0%';
                     readerView.style.display = 'none';
                     
-                    // 3. 準備設定頁面 (設為透明)
                     if (window.innerWidth >= 800) {
                         settingsView.style.display = 'grid';
                     } else {
@@ -826,11 +849,10 @@
                     }
                     settingsView.style.opacity = '0';
                     
-                    // 4. 觸發重繪後淡入設定頁面
                     requestAnimationFrame(() => {
                         settingsView.style.opacity = '1';
                     });
-                }, 800); // 配合 CSS transition 時間
+                }, 800);
             };
 
             // 6. 進度條更新
@@ -873,7 +895,11 @@
             // --- 觸控與點擊互動邏輯 ---
             
             const handleInteractStart = (e) => {
-                if (e.target.closest('button') || !isReading) return;
+                // 排除按鈕點擊
+                if (e.target.closest('button')) return;
+                
+                // 如果不在閱讀模式且不在完成模式，忽略
+                if (!isReading && !inCompletionMode) return;
                 
                 if (e.type === 'touchstart') {
                     e.preventDefault();
@@ -883,16 +909,19 @@
                     return;
                 }
 
-                stopAutoPageTurn();
-                pressTimer = Date.now();
+                // 若在閱讀中，暫停翻頁
+                if (isReading) {
+                    stopAutoPageTurn();
+                    pressTimer = Date.now();
 
-                visualPauseTimer = setTimeout(() => {
-                    pauseIndicator.style.opacity = '1';
-                }, LONG_PRESS_THRESHOLD);
+                    visualPauseTimer = setTimeout(() => {
+                        pauseIndicator.style.opacity = '1';
+                    }, LONG_PRESS_THRESHOLD);
+                }
             };
 
             const handleInteractEnd = (e) => {
-                if (e.target.closest('button') || !isReading) return;
+                if (e.target.closest('button')) return;
                 
                 if (e.type.startsWith('mouse') && (Date.now() - lastTouchTime < 800)) {
                     return;
@@ -902,6 +931,22 @@
                     lastTouchTime = Date.now();
                     e.preventDefault(); 
                 }
+
+                const screenWidth = window.innerWidth;
+                const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+
+                // *** 關鍵邏輯：完成頁面下的點擊處理 ***
+                if (inCompletionMode) {
+                    // 如果點擊左半邊 -> 回到上一頁
+                    if (clientX < screenWidth / 2) {
+                        hideCompletionAndResume();
+                    }
+                    // 點擊右半邊 -> 無動作 (或是可以加個提示，但目前保持靜默)
+                    return;
+                }
+
+                // 若不在閱讀模式，不做後續處理
+                if (!isReading) return;
 
                 if (!pressTimer) return;
 
@@ -916,9 +961,6 @@
                 pressTimer = null;
 
                 if (duration < LONG_PRESS_THRESHOLD) {
-                    const screenWidth = window.innerWidth;
-                    const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-                    
                     if (clientX < screenWidth / 2) {
                         goToPrevSegment();
                     } else {
@@ -926,6 +968,7 @@
                     }
                     startAutoPageTurn();
                 } else {
+                    // 長按結束，恢復計時
                     startAutoPageTurn();
                 }
             };
@@ -950,22 +993,17 @@
             readerView.addEventListener('touchend', handleInteractEnd, {passive: false});
 
             // --- 頁面能見度改變時的處理 ---
-            // 當用戶離開頁面 (切換分頁/關閉屏幕) 時暫停，回來時繼續
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    // 用戶離開
                     if (isReading && intervalId) {
                         stopAutoPageTurn();
-                        // 注意：我們不改變 isReading 狀態，只是暫停計時器
                     }
                 } else {
-                    // 用戶回來
-                    if (isReading && !intervalId) {
+                    if (isReading && !intervalId && !inCompletionMode) {
                         startAutoPageTurn();
                     }
                 }
             });
-
 
             // --- 歷史紀錄與儲存功能 ---
             const getHistory = () => JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
