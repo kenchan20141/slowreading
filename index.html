@@ -365,14 +365,12 @@
             background-color: var(--background-color);
             z-index: 60; 
             opacity: 0;
-            transition: opacity 0.8s ease; /* 與慢讀節奏一致的淡入淡出 */
+            transition: opacity 0.8s ease; 
         }
 
         #completion-view.visible {
             opacity: 1;
         }
-
-        /* 已刪除 .completion-message */
 
         .completion-actions {
             display: flex;
@@ -455,7 +453,7 @@
             z-index: 200;
             opacity: 0;
             visibility: hidden;
-            /* 修改：將動畫時間改為 0.6s，更加緩慢柔和 */
+            /* 動畫時間為 0.6s，更加緩慢柔和 */
             transition: opacity 0.6s ease, visibility 0.6s ease;
             padding: 1rem;
         }
@@ -602,7 +600,6 @@
 
     <!-- 完成介面 (覆蓋在閱讀介面上) -->
     <div id="completion-view">
-        <!-- 已刪除完讀文字 -->
         <div class="completion-actions">
             <div class="completion-btn-wrapper">
                 <button id="end-save-button" class="completion-btn" title="儲存文章">
@@ -951,6 +948,23 @@
 
             readerView.addEventListener('touchstart', handleInteractStart, {passive: false});
             readerView.addEventListener('touchend', handleInteractEnd, {passive: false});
+
+            // --- 頁面能見度改變時的處理 ---
+            // 當用戶離開頁面 (切換分頁/關閉屏幕) 時暫停，回來時繼續
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // 用戶離開
+                    if (isReading && intervalId) {
+                        stopAutoPageTurn();
+                        // 注意：我們不改變 isReading 狀態，只是暫停計時器
+                    }
+                } else {
+                    // 用戶回來
+                    if (isReading && !intervalId) {
+                        startAutoPageTurn();
+                    }
+                }
+            });
 
 
             // --- 歷史紀錄與儲存功能 ---
