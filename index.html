@@ -19,7 +19,6 @@
             --border-color: #dcd6c8;
             --accent-color: #4a7c85; 
             --accent-color-hover: #3e6870;
-            --accent-color-hover-rgb: 62, 104, 112;
             --accent-text-color: #f4f1ea; 
             --danger-color: #b95c5c;
         }
@@ -38,6 +37,7 @@
             transition: background-color 0.5s ease;
         }
 
+        /* 進度條 */
         #progress-container {
             position: fixed;
             top: 0;
@@ -74,6 +74,7 @@
             padding: 3vh 0;
         }
         
+        /* 設定頁面 (主頁) */
         #settings-view {
             display: flex;
             flex-direction: column;
@@ -82,6 +83,7 @@
             max-width: 600px;
             box-sizing: border-box;
             align-items: center;
+            transition: opacity 0.5s ease;
         }
         
         #main-input-area {
@@ -252,17 +254,13 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         
-        .action-icon-button.saved {
-             color: var(--accent-color);
-             border-color: var(--accent-color);
-        }
-
         .action-icon-button svg {
             width: 22px;
             height: 22px;
             fill: currentColor;
         }
 
+        /* 閱讀介面 */
         #reader-view {
             width: 80%;
             max-width: 800px;
@@ -309,6 +307,7 @@
             text-align: left;
         }
 
+        /* 底部控制列 */
         .controls {
             position: absolute;
             bottom: 60px;
@@ -316,6 +315,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: opacity 0.5s ease;
         }
 
         .control-button {
@@ -336,9 +336,64 @@
             width: 24px;
             height: 24px;
         }
+
+        /* 結束時的動作介面 */
+        #completion-view {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 60%;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        #completion-view.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        .completion-actions-container {
+            display: flex;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .completion-btn {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: var(--subtle-text-color);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .completion-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: scale(1.1);
+            background-color: var(--card-bg-color);
+        }
+
+        .completion-btn svg {
+            width: 32px;
+            height: 32px;
+            fill: currentColor;
+        }
+
+        .completion-btn.saved {
+             background-color: var(--accent-color);
+             color: var(--accent-text-color);
+             border-color: var(--accent-color);
+        }
         
         .copyright-footer {
-    
             bottom: 0;
             right: 0;
             padding: 1rem 1.5rem;
@@ -351,6 +406,7 @@
             color: var(--subtle-text-color);
         }
         
+        /* 彈出視窗 (Modal) */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -443,6 +499,8 @@
             .copyright-footer p {
                 font-size: 0.75rem;
             }
+            .completion-actions-container { gap: 1.5rem; }
+            .completion-btn { width: 60px; height: 60px; }
         }
     </style>
 </head>
@@ -457,9 +515,6 @@
         <div id="settings-view">
             <div id="main-input-area">
                 <div class="secondary-actions">
-                    <button id="save-button" class="action-icon-button" title="儲存文章">
-                        <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-                    </button>
                     <button id="history-button" class="action-icon-button" title="閱讀紀錄">
                         <svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
                     </button>
@@ -488,7 +543,6 @@
                 </button>
             </div>
             
-            <!-- 【修訂】將頁腳移至此處，使其與設定頁面連動 -->
             <footer class="copyright-footer">
                 <p>Copyright © 2025 陳冠健. All rights reserved.</p>
             </footer>
@@ -499,7 +553,20 @@
                 <div id="paragraph-number"></div>
                 <div id="text-display"></div>
             </div>
-            <div class="controls">
+
+            <!-- 閱讀結束後的動作介面 -->
+            <div id="completion-view">
+                <div class="completion-actions-container">
+                    <button id="end-save-button" class="completion-btn" title="儲存文章">
+                        <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    </button>
+                    <button id="end-home-button" class="completion-btn" title="返回主頁">
+                        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls" id="reader-controls">
                 <button class="control-button" id="prev-button" title="上一頁">
                     <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                 </button>
@@ -541,16 +608,25 @@
             const readerView = document.getElementById('reader-view');
             const textInput = document.getElementById('text-input');
             const startButton = document.getElementById('start-button');
-            const saveButton = document.getElementById('save-button');
             const historyButton = document.getElementById('history-button');
             const timerDisplay = document.getElementById('timer-display');
             const incrementTimerBtn = document.getElementById('increment-timer');
             const decrementTimerBtn = document.getElementById('decrement-timer');
+            
+            // Reader Components
             const displayWrapper = document.getElementById('display-wrapper');
             const paragraphNumberDisplay = document.getElementById('paragraph-number');
             const textDisplay = document.getElementById('text-display');
+            const readerControls = document.getElementById('reader-controls');
             const prevButton = document.getElementById('prev-button');
             const nextButton = document.getElementById('next-button');
+            
+            // Completion Components
+            const completionView = document.getElementById('completion-view');
+            const endSaveButton = document.getElementById('end-save-button');
+            const endHomeButton = document.getElementById('end-home-button');
+
+            // Progress
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const progressPercentage = document.getElementById('progress-percentage');
@@ -574,10 +650,20 @@
             const startReadingProcess = (rawText) => {
                 closeAllModals();
                 const traditionalText = toTraditional(rawText);
+                // 將常用的全形引號統一處理，避免 OpenCC 遺漏
                 const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
+                // 加入段落標記
                 const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
                 segmentText(textWithMarkers);
                 
+                // Reset UI for new reading
+                completionView.classList.remove('visible');
+                completionView.style.display = 'none';
+                displayWrapper.style.display = 'flex';
+                displayWrapper.classList.remove('fade-out');
+                readerControls.style.display = 'flex';
+                readerControls.style.opacity = '1';
+
                 const pageTurnInterval = currentSeconds * 1000;
                 progressContainer.style.visibility = 'visible';
                 progressContainer.style.opacity = '1';
@@ -590,22 +676,70 @@
             };
 
             const segmentText = (text) => {
+                // 1. 初步切割：依照常見標點進行切割
                 const regex = /(?<=[。？！\.”’』」])|(?=__NEW_PARA__)/g;
                 const rawSegments = text.split(regex).filter(s => s && s.trim() !== '');
-                let processedSegments = [];
-                for (const segment of rawSegments) {
-                    if (processedSegments.length > 0 && /^\s*[」”’』]\s*$/.test(segment)) {
-                        processedSegments[processedSegments.length - 1].text += segment;
-                    } else {
-                        const isNew = segment.startsWith('__NEW_PARA__');
-                        processedSegments.push({ text: isNew ? segment.substring(12) : segment, isNewPara: isNew, paraNumber: null });
+
+                // 2. 邏輯合併：檢查被切斷的標點 (處理 "」。" 這種情況)
+                let mergedSegments = [];
+                for (let i = 0; i < rawSegments.length; i++) {
+                    let current = rawSegments[i];
+
+                    // 如果是新段落標記，直接加入，不進行前向合併
+                    if (current.startsWith('__NEW_PARA__')) {
+                        mergedSegments.push(current);
+                        continue;
+                    }
+
+                    // 檢查當前片段是否以「避頭點」開始 (如 。 」 ？ ！ 等)
+                    // 這表示上一個片段被不正確地切斷了
+                    // 條件：
+                    // 1. `mergedSegments` 不為空
+                    // 2. 上一個片段不是「新段落標記」 (不跨段落合併)
+                    // 3. 當前片段以標點符號開頭
+                    
+                    while (mergedSegments.length > 0 && !mergedSegments[mergedSegments.length-1].startsWith('__NEW_PARA__')) {
+                        // 匹配開頭的連續標點符號
+                        const punctuationMatch = current.match(/^(\s*[。？！\.”’』」]+)(.*)/s);
+                        
+                        if (punctuationMatch) {
+                            const punctuations = punctuationMatch[1]; // 例如 "」。" 或 "。"
+                            const rest = punctuationMatch[2];         // 剩餘文字
+                            
+                            // 將標點符號追加到上一個片段
+                            mergedSegments[mergedSegments.length - 1] += punctuations;
+                            
+                            // 更新 current 為剩餘文字
+                            current = rest;
+                            
+                            // 如果剩餘文字為空，則不需要再處理這個 segment
+                            if (!current) break;
+                        } else {
+                            // 沒有開頭標點，停止檢查
+                            break;
+                        }
+                    }
+
+                    // 如果 current 還有內容，則作為新的一頁加入
+                    if (current) {
+                        mergedSegments.push(current);
                     }
                 }
+
+                // 3. 轉換為物件格式並加上段落編號
+                let processedSegments = [];
                 let pCounter = 1;
-                textSegments = processedSegments.map(seg => {
-                    if (seg.isNewPara) seg.paraNumber = pCounter++;
-                    return seg;
-                });
+                
+                for (const segment of mergedSegments) {
+                    const isNew = segment.startsWith('__NEW_PARA__');
+                    processedSegments.push({ 
+                        text: isNew ? segment.substring(12) : segment, 
+                        isNewPara: isNew, 
+                        paraNumber: isNew ? pCounter++ : null 
+                    });
+                }
+                
+                textSegments = processedSegments;
             };
 
             const displaySegment = (index) => {
@@ -621,6 +755,35 @@
                 }
             };
 
+            const showCompletionView = () => {
+                stopAutoPageTurn();
+                displayWrapper.classList.add('fade-out');
+                readerControls.style.opacity = '0';
+                
+                // Set progress to 100%
+                progressBar.style.width = `100%`;
+                progressPercentage.textContent = `100%`;
+
+                setTimeout(() => {
+                    displayWrapper.style.display = 'none';
+                    readerControls.style.display = 'none';
+                    completionView.style.display = 'flex';
+                    // Force reflow for transition
+                    void completionView.offsetWidth; 
+                    completionView.classList.add('visible');
+                }, 800);
+            };
+            
+            const returnToHome = () => {
+                stopAutoPageTurn();
+                progressContainer.style.opacity = '0';
+                setTimeout(() => progressContainer.style.visibility = 'hidden', 500);
+                
+                readerView.style.display = 'none';
+                settingsView.style.display = 'flex'; 
+                settingsView.style.opacity = '1';
+            };
+
             const updateProgressBar = () => {
                 const perc = textSegments.length > 0 ? ((currentIndex + 1) / textSegments.length) * 100 : 0;
                 progressBar.style.width = `${perc}%`;
@@ -633,7 +796,16 @@
             };
 
             const stopAutoPageTurn = () => clearInterval(intervalId);
-            const goToNextSegment = () => (currentIndex < textSegments.length - 1) ? displaySegment(++currentIndex) : stopAutoPageTurn();
+            
+            const goToNextSegment = () => {
+                if (currentIndex < textSegments.length - 1) {
+                    displaySegment(++currentIndex);
+                } else {
+                    // End of text
+                    showCompletionView();
+                }
+            };
+            
             const goToPrevSegment = () => (currentIndex > 0) ? displaySegment(--currentIndex) : null;
 
             const getHistory = () => JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -650,7 +822,10 @@
                     const li = document.createElement('li');
                     li.className = 'history-item';
                     li.innerHTML = `<span class="history-item-title">${item.title}</span><button class="delete-history-button" data-id="${item.id}" title="刪除紀錄"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
-                    li.querySelector('.history-item-title').addEventListener('click', () => startReadingProcess(item.content));
+                    li.querySelector('.history-item-title').addEventListener('click', () => {
+                        textInput.value = item.content; 
+                        startReadingProcess(item.content);
+                    });
                     li.querySelector('.delete-history-button').addEventListener('click', (e) => {
                         e.stopPropagation();
                         deleteArticle(Number(e.currentTarget.dataset.id));
@@ -673,17 +848,23 @@
             incrementTimerBtn.addEventListener('click', () => timerDisplay.textContent = ++currentSeconds);
             decrementTimerBtn.addEventListener('click', () => { if (currentSeconds > 4) timerDisplay.textContent = --currentSeconds; });
             startButton.addEventListener('click', () => textInput.value.trim() ? startReadingProcess(textInput.value) : alert('請輸入文字內容'));
+            
+            // Navigation Controls
             prevButton.addEventListener('click', () => { goToPrevSegment(); startAutoPageTurn(currentSeconds * 1000); });
             nextButton.addEventListener('click', () => { goToNextSegment(); startAutoPageTurn(currentSeconds * 1000); });
 
-            readerView.addEventListener('mousedown', (e) => { if (!e.target.closest('.control-button')) isStaying = true; });
+            readerView.addEventListener('mousedown', (e) => { if (!e.target.closest('.control-button') && !e.target.closest('.completion-btn')) isStaying = true; });
             ['mouseup', 'mouseleave'].forEach(evt => readerView.addEventListener(evt, () => isStaying = false));
-            readerView.addEventListener('touchstart', (e) => { if (!e.target.closest('.control-button')) { e.preventDefault(); isStaying = true; }});
+            readerView.addEventListener('touchstart', (e) => { if (!e.target.closest('.control-button') && !e.target.closest('.completion-btn')) { isStaying = true; }});
             readerView.addEventListener('touchend', () => isStaying = false);
 
+            // History & Save
             historyButton.addEventListener('click', () => { renderHistoryList(); showModal(historyView); });
-            saveButton.addEventListener('click', () => {
-                if (!textInput.value.trim()) { alert('請先輸入要儲存的內容。'); return; }
+            
+            // End Page Actions
+            endHomeButton.addEventListener('click', returnToHome);
+            endSaveButton.addEventListener('click', () => {
+                if (!textInput.value.trim()) { alert('內容為空，無法儲存。'); return; }
                 saveTitleInput.value = '未命名文章';
                 showModal(saveModal);
                 saveTitleInput.focus();
@@ -697,8 +878,10 @@
                     history.unshift({ id: Date.now(), title, content });
                     saveHistory(history);
                     hideModal(saveModal);
-                    saveButton.classList.add('saved');
-                    setTimeout(() => saveButton.classList.remove('saved'), 1500);
+                    
+                    // Feedback on the save button
+                    endSaveButton.classList.add('saved');
+                    setTimeout(() => endSaveButton.classList.remove('saved'), 1500);
                 } else {
                     alert('篇名不能為空！');
                 }
