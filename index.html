@@ -43,6 +43,8 @@
             /* 禁止頁面選取文字 */
             user-select: none; 
             -webkit-user-select: none;
+            /* 防止長按時的系統菜單呼叫 (針對部分 iOS/Android) */
+            -webkit-touch-callout: none; 
         }
 
         /* 進度條容器 */
@@ -286,7 +288,8 @@
             display: none;
             flex-direction: column;
             align-items: center; /* 水平置中 */
-            justify-content: center; /* 垂直置中，讓文字在畫面中間 */
+            /* 修改：改為 flex-start，透過 margin-top 控制高度，避免太低 */
+            justify-content: flex-start; 
             cursor: pointer;
         }
 
@@ -297,6 +300,8 @@
             justify-content: center;
             width: 80%;
             max-width: 800px;
+            /* 修改：使用 margin-top 將文字位置上移 */
+            margin-top: 25vh; 
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             pointer-events: none; 
@@ -523,6 +528,15 @@
             .settings-controls { height: 100%; }
             #timer-display { font-size: 4.5rem; }
             #start-button { width: 100%; }
+            
+            #display-wrapper { margin-top: 30vh; } /* 電腦版位置 */
+        }
+
+        /* 手機版特別微調 */
+        @media (max-width: 799px) {
+             #display-wrapper { 
+                 margin-top: 20vh; /* 手機版將文字移上一點，避免太低 */
+             }
         }
     </style>
 </head>
@@ -672,7 +686,7 @@
             // 觸控邏輯變數
             let pressTimer = null;
             let visualPauseTimer = null;
-            let lastTouchTime = 0; // 關鍵變數：用來解決跳兩頁問題
+            let lastTouchTime = 0; 
             const LONG_PRESS_THRESHOLD = 250; 
 
             const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' });
@@ -694,7 +708,7 @@
 
                 // 切換 UI
                 settingsView.style.display = 'none';
-                readerView.style.display = 'flex'; // Flex 確保置中
+                readerView.style.display = 'flex'; 
                 progressContainer.style.visibility = 'visible';
                 progressContainer.style.opacity = '1';
                 
@@ -797,7 +811,7 @@
                 completionView.style.display = 'none';
                 completionView.classList.remove('visible');
                 
-                // 恢復設定頁面顯示，根據視窗大小恢復 Grid 或 Flex
+                // 恢復設定頁面顯示
                 if (window.innerWidth >= 800) {
                     settingsView.style.display = 'grid';
                 } else {
@@ -832,7 +846,6 @@
                     currentIndex++;
                     displaySegment(currentIndex);
                 } else {
-                    // 如果已經是最後一頁，再次翻頁則進入完成頁面
                     showCompletionView();
                 }
             };
@@ -844,12 +857,12 @@
                 }
             };
 
-            // --- 觸控與點擊互動邏輯 (修復跳頁問題) ---
+            // --- 觸控與點擊互動邏輯 ---
             
             const handleInteractStart = (e) => {
                 if (e.target.closest('button') || !isReading) return;
                 
-                // 如果是滑鼠事件，且距離上次觸控結束事件很近，則忽略 (防止 Ghost Click)
+                // Ghost Click 防護
                 if (e.type.startsWith('mouse') && (Date.now() - lastTouchTime < 800)) {
                     return;
                 }
@@ -865,12 +878,11 @@
             const handleInteractEnd = (e) => {
                 if (e.target.closest('button') || !isReading) return;
                 
-                // 如果是滑鼠事件，且距離上次觸控結束事件很近，則忽略 (防止 Ghost Click)
+                // Ghost Click 防護
                 if (e.type.startsWith('mouse') && (Date.now() - lastTouchTime < 800)) {
                     return;
                 }
                 
-                // 如果是觸控結束，記錄時間
                 if (e.type === 'touchend') {
                     lastTouchTime = Date.now();
                 }
@@ -890,7 +902,6 @@
                 if (duration < LONG_PRESS_THRESHOLD) {
                     // 短按：翻頁
                     const screenWidth = window.innerWidth;
-                    // 兼容 Touch 和 Mouse 事件的座標獲取
                     const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
                     
                     if (clientX < screenWidth / 2) {
@@ -915,7 +926,13 @@
                 if (isReading && !intervalId) startAutoPageTurn();
             });
 
-            // Touch events with passive: false to prevent scrolling
+            // 禁用右鍵選單 (電腦) 與 長按選單 (手機)，避免震動與功能中斷
+            readerView.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            });
+
             readerView.addEventListener('touchstart', handleInteractStart, {passive: true});
             readerView.addEventListener('touchend', handleInteractEnd, {passive: true});
 
