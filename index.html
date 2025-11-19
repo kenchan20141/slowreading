@@ -281,22 +281,24 @@
             z-index: 50;
             display: none; /* 初始隱藏 */
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer; /* 提示可點擊 */
+            align-items: center; /* 水平置中 */
+            justify-content: flex-start; /* 垂直靠上 (修改點) */
+            cursor: pointer;
         }
 
         #display-wrapper {
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: flex-start; /* 內容靠上 (修改點) */
             width: 80%;
             max-width: 800px;
-            height: 70%; /* 預留空間給手勢區域 */
+            height: 80%; /* 增加高度區域 */
+            padding-top: 15vh; /* 上方留白，讓文字比中間偏高 (修改點) */
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
-            pointer-events: none; /* 讓點擊事件穿透文字，直接作用於 reader-view */
+            pointer-events: none; 
+            box-sizing: border-box;
         }
 
         #display-wrapper.fade-out {
@@ -319,19 +321,19 @@
             width: 100%;
         }
         
-        /* 暫停提示 (已修改為上方置中) */
+        /* 暫停提示 */
         #pause-indicator {
             position: absolute;
-            top: 25px; /* 稍微留一點距離 */
+            top: 30px;
             left: 50%;
-            transform: translateX(-50%); /* 水平置中關鍵 */
+            transform: translateX(-50%);
             font-size: 0.9rem;
             color: var(--accent-color);
             border: 1px solid var(--accent-color);
             padding: 4px 12px;
             border-radius: 20px;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s; /* 視覺過渡 */
             pointer-events: none;
             background-color: var(--background-color);
             z-index: 150;
@@ -669,7 +671,8 @@
             
             // 觸控邏輯變數
             let pressTimer = null;
-            const LONG_PRESS_THRESHOLD = 250; // 毫秒：超過此時間視為長按/暫停，否則為點擊
+            let visualPauseTimer = null;
+            const LONG_PRESS_THRESHOLD = 250; // 毫秒：超過此時間才顯示「暫停」並視為長按
 
             const toTraditional = OpenCC.Converter({ from: 'cn', to: 'tw' });
             const STORAGE_KEY = 'slowReaderHistory';
@@ -807,7 +810,7 @@
             // 7. 計時器控制
             const startAutoPageTurn = () => {
                 if (intervalId) clearInterval(intervalId);
-                pauseIndicator.style.opacity = '0';
+                // 這裡不直接隱藏 pauseIndicator，由 touchEnd 處理
                 intervalId = setInterval(() => {
                     goToNextSegment();
                 }, currentSeconds * 1000);
@@ -816,7 +819,7 @@
             const stopAutoPageTurn = () => {
                 if (intervalId) clearInterval(intervalId);
                 intervalId = null;
-                if(isReading) pauseIndicator.style.opacity = '1';
+                // 注意：這裡不顯示 pauseIndicator，避免點擊瞬間閃爍
             };
 
             // 8. 翻頁邏輯
@@ -837,29 +840,45 @@
                 }
             };
 
-            // --- 觸控與點擊互動邏輯 (Left=Prev, Right=Next, Hold=Pause) ---
+            // --- 觸控與點擊互動邏輯 (修正版) ---
             
             const handleInteractStart = (e) => {
                 // 忽略完成頁面上的按鈕點擊
                 if (e.target.closest('button') || !isReading) return;
                 
-                // 按下即暫停
+                // 1. 立即停止背景計時，避免在按住時翻頁 (邏輯暫停)
                 stopAutoPageTurn();
+                
+                // 2. 記錄開始時間
                 pressTimer = Date.now();
+
+                // 3. 延遲顯示「暫停」字樣 (視覺暫停)
+                // 如果是快速點擊，會在時間到之前被清除，從而解決閃爍問題
+                visualPauseTimer = setTimeout(() => {
+                    pauseIndicator.style.opacity = '1';
+                }, LONG_PRESS_THRESHOLD);
             };
 
             const handleInteractEnd = (e) => {
                 if (e.target.closest('button') || !isReading) return;
                 if (!pressTimer) return;
 
+                // 1. 清除視覺暫停的延遲計時器 (如果是快速點擊，暫停字樣永遠不會出現)
+                if (visualPauseTimer) {
+                    clearTimeout(visualPauseTimer);
+                    visualPauseTimer = null;
+                }
+
+                // 2. 確保「暫停」字樣隱藏
+                pauseIndicator.style.opacity = '0';
+
                 const duration = Date.now() - pressTimer;
                 pressTimer = null;
 
-                // 判斷是短按(點擊)還是長按(暫停後釋放)
+                // 3. 判斷邏輯
                 if (duration < LONG_PRESS_THRESHOLD) {
-                    // 短按：執行翻頁
+                    // --- 短按 (點擊) ---
                     const screenWidth = window.innerWidth;
-                    // 取得點擊位置 (兼容 touch 和 mouse)
                     const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
                     
                     if (clientX < screenWidth / 2) {
@@ -867,10 +886,11 @@
                     } else {
                         goToNextSegment();
                     }
-                    // 翻頁後重啟計時器
+                    // 翻頁後重新開始計時
                     startAutoPageTurn();
                 } else {
-                    // 長按釋放：僅恢復計時，不翻頁
+                    // --- 長按 (釋放後) ---
+                    // 僅恢復計時，不翻頁
                     startAutoPageTurn();
                 }
             };
@@ -880,7 +900,9 @@
             readerView.addEventListener('mousedown', handleInteractStart);
             readerView.addEventListener('mouseup', handleInteractEnd);
             readerView.addEventListener('mouseleave', () => {
-                // 滑鼠移出視窗，視為釋放並恢復
+                // 滑鼠移出視窗，視為釋放並恢復，清除相關計時器
+                if (visualPauseTimer) clearTimeout(visualPauseTimer);
+                pauseIndicator.style.opacity = '0';
                 if (isReading && !intervalId) startAutoPageTurn();
             });
 
