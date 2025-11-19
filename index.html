@@ -39,11 +39,11 @@
             align-items: flex-start;
             min-height: 100vh;
             padding: 1rem;
-            transition: background-color 0.5s ease;
+            transition: background-color 0.8s ease; /* 背景切換更慢 */
             /* 禁止頁面選取文字 */
             user-select: none; 
             -webkit-user-select: none;
-            /* 防止長按時的系統菜單呼叫 (針對部分 iOS/Android) */
+            /* 防止長按時的系統菜單呼叫 (iOS/Android) */
             -webkit-touch-callout: none; 
         }
 
@@ -56,14 +56,14 @@
             z-index: 100;
             visibility: hidden;
             opacity: 0;
-            transition: opacity 0.5s ease-in-out;
+            transition: opacity 0.8s ease-in-out; /* 放慢顯示消失速度 */
         }
 
         #progress-bar {
             height: 6px;
             background-color: var(--accent-color);
             width: 0%;
-            transition: width 0.4s ease-out;
+            transition: width 0.6s ease-out; /* 放慢進度條跑動速度 */
         }
 
         /* 進度百分比文字 */
@@ -96,7 +96,8 @@
             width: 100%;
             max-width: 600px;
             align-items: center;
-            transition: opacity 0.5s ease;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out; /* 頁面切換淡入淡出 */
         }
         
         #main-input-area {
@@ -287,10 +288,11 @@
             z-index: 50;
             display: none;
             flex-direction: column;
-            align-items: center; /* 水平置中 */
-            /* 修改：改為 flex-start，透過 margin-top 控制高度，避免太低 */
+            align-items: center; 
             justify-content: flex-start; 
             cursor: pointer;
+            /* 關鍵：禁止瀏覽器處理觸控動作，減少干擾 */
+            touch-action: none;
         }
 
         #display-wrapper {
@@ -300,8 +302,11 @@
             justify-content: center;
             width: 80%;
             max-width: 800px;
-            /* 修改：使用 margin-top 將文字位置上移 */
+            
+            /* --- 用戶教學：在此調整文字高度 --- */
             margin-top: 25vh; 
+            /* -------------------------------- */
+
             opacity: 1;
             transition: opacity 0.8s ease-in-out;
             pointer-events: none; 
@@ -358,21 +363,16 @@
             top: 0;
             left: 0;
             background-color: var(--background-color);
-            z-index: 60; /* 蓋在閱讀器之上 */
+            z-index: 60; 
             opacity: 0;
-            transition: opacity 0.8s ease;
+            transition: opacity 0.8s ease; /* 與慢讀節奏一致的淡入淡出 */
         }
 
         #completion-view.visible {
             opacity: 1;
         }
 
-        .completion-message {
-            font-family: 'Playfair Display', serif;
-            font-size: 2rem;
-            color: var(--text-color);
-            margin-bottom: 1rem;
-        }
+        /* 已刪除 .completion-message */
 
         .completion-actions {
             display: flex;
@@ -455,7 +455,8 @@
             z-index: 200;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
+            /* 修改：將動畫時間改為 0.6s，更加緩慢柔和 */
+            transition: opacity 0.6s ease, visibility 0.6s ease;
             padding: 1rem;
         }
 
@@ -529,14 +530,18 @@
             #timer-display { font-size: 4.5rem; }
             #start-button { width: 100%; }
             
-            #display-wrapper { margin-top: 30vh; } /* 電腦版位置 */
+            /* --- 用戶教學：電腦版的高度微調 --- */
+            #display-wrapper { margin-top: 30vh; } 
+            /* -------------------------------- */
         }
 
         /* 手機版特別微調 */
         @media (max-width: 799px) {
+             /* --- 用戶教學：手機版的高度微調 --- */
              #display-wrapper { 
-                 margin-top: 20vh; /* 手機版將文字移上一點，避免太低 */
+                 margin-top: 28vh; 
              }
+             /* -------------------------------- */
         }
     </style>
 </head>
@@ -597,7 +602,7 @@
 
     <!-- 完成介面 (覆蓋在閱讀介面上) -->
     <div id="completion-view">
-        <div class="completion-message">完讀</div>
+        <!-- 已刪除完讀文字 -->
         <div class="completion-actions">
             <div class="completion-btn-wrapper">
                 <button id="end-save-button" class="completion-btn" title="儲存文章">
@@ -707,21 +712,25 @@
                 if (textSegments.length === 0) return;
 
                 // 切換 UI
-                settingsView.style.display = 'none';
-                readerView.style.display = 'flex'; 
-                progressContainer.style.visibility = 'visible';
-                progressContainer.style.opacity = '1';
+                settingsView.style.opacity = '0'; // 先淡出設定頁
                 
-                // 重置狀態
-                completionView.style.display = 'none';
-                completionView.classList.remove('visible');
-                displayWrapper.style.display = 'flex';
-                displayWrapper.classList.remove('fade-out');
-                
-                currentIndex = 0;
-                isReading = true;
-                displaySegment(currentIndex);
-                startAutoPageTurn();
+                setTimeout(() => {
+                    settingsView.style.display = 'none';
+                    readerView.style.display = 'flex'; 
+                    progressContainer.style.visibility = 'visible';
+                    progressContainer.style.opacity = '1';
+                    
+                    // 重置狀態
+                    completionView.style.display = 'none';
+                    completionView.classList.remove('visible');
+                    displayWrapper.style.display = 'flex';
+                    displayWrapper.classList.remove('fade-out');
+                    
+                    currentIndex = 0;
+                    isReading = true;
+                    displaySegment(currentIndex);
+                    startAutoPageTurn();
+                }, 500);
             };
 
             // 2. 文字切分邏輯
@@ -793,31 +802,38 @@
                 }, 600);
             };
 
-            // 5. 返回主頁
+            // 5. 返回主頁 (優化淡出效果)
             const returnToHome = () => {
                 stopAutoPageTurn();
                 isReading = false;
                 
-                // 隱藏進度條
+                // 1. 先將當前畫面淡出
+                completionView.style.opacity = '0';
                 progressContainer.style.opacity = '0';
+
+                // 2. 等待淡出動畫完成 (0.8s) 後再切換 display
                 setTimeout(() => {
+                    // 隱藏元素
+                    completionView.style.display = 'none';
+                    completionView.classList.remove('visible');
                     progressContainer.style.visibility = 'hidden';
                     progressBar.style.width = '0%';
                     progressPercentage.textContent = '0%';
-                }, 500);
-                
-                // 隱藏閱讀器與完成頁面
-                readerView.style.display = 'none';
-                completionView.style.display = 'none';
-                completionView.classList.remove('visible');
-                
-                // 恢復設定頁面顯示
-                if (window.innerWidth >= 800) {
-                    settingsView.style.display = 'grid';
-                } else {
-                    settingsView.style.display = 'flex';
-                }
-                settingsView.style.opacity = '1';
+                    readerView.style.display = 'none';
+                    
+                    // 3. 準備設定頁面 (設為透明)
+                    if (window.innerWidth >= 800) {
+                        settingsView.style.display = 'grid';
+                    } else {
+                        settingsView.style.display = 'flex';
+                    }
+                    settingsView.style.opacity = '0';
+                    
+                    // 4. 觸發重繪後淡入設定頁面
+                    requestAnimationFrame(() => {
+                        settingsView.style.opacity = '1';
+                    });
+                }, 800); // 配合 CSS transition 時間
             };
 
             // 6. 進度條更新
@@ -862,7 +878,10 @@
             const handleInteractStart = (e) => {
                 if (e.target.closest('button') || !isReading) return;
                 
-                // Ghost Click 防護
+                if (e.type === 'touchstart') {
+                    e.preventDefault();
+                }
+
                 if (e.type.startsWith('mouse') && (Date.now() - lastTouchTime < 800)) {
                     return;
                 }
@@ -878,13 +897,13 @@
             const handleInteractEnd = (e) => {
                 if (e.target.closest('button') || !isReading) return;
                 
-                // Ghost Click 防護
                 if (e.type.startsWith('mouse') && (Date.now() - lastTouchTime < 800)) {
                     return;
                 }
                 
                 if (e.type === 'touchend') {
                     lastTouchTime = Date.now();
+                    e.preventDefault(); 
                 }
 
                 if (!pressTimer) return;
@@ -900,7 +919,6 @@
                 pressTimer = null;
 
                 if (duration < LONG_PRESS_THRESHOLD) {
-                    // 短按：翻頁
                     const screenWidth = window.innerWidth;
                     const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
                     
@@ -911,7 +929,6 @@
                     }
                     startAutoPageTurn();
                 } else {
-                    // 長按：僅恢復計時
                     startAutoPageTurn();
                 }
             };
@@ -926,15 +943,14 @@
                 if (isReading && !intervalId) startAutoPageTurn();
             });
 
-            // 禁用右鍵選單 (電腦) 與 長按選單 (手機)，避免震動與功能中斷
             readerView.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 return false;
             });
 
-            readerView.addEventListener('touchstart', handleInteractStart, {passive: true});
-            readerView.addEventListener('touchend', handleInteractEnd, {passive: true});
+            readerView.addEventListener('touchstart', handleInteractStart, {passive: false});
+            readerView.addEventListener('touchend', handleInteractEnd, {passive: false});
 
 
             // --- 歷史紀錄與儲存功能 ---
