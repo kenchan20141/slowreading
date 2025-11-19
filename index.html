@@ -717,14 +717,17 @@
                 const end = new Date(); 
                 const randomTime = start.getTime() + Math.random() * (end.getTime() - start.getTime());
                 const d = new Date(randomTime);
+                
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
+                
                 return `${year}-${month}-${day}`;
             };
 
-            // 1. 抓取每日一文
+            // 1. 抓取每日一文 (隨機日期版 - 修訂：全篇轉繁體 + 移除特定文字)
             const fetchRandomArticle = async () => {
+                // UI 狀態：載入中
                 randomArticleButton.classList.add('loading');
                 textInput.placeholder = "正在時光機中尋找文章...";
                 
@@ -737,11 +740,15 @@
 
                     if (result.code === 200) {
                         const data = result.data;
-                        // 修正：在此處立即將簡體標題轉為繁體，供後續儲存使用
-                        currentRandomTitle = toTraditional(data.title);
-                        let author = toTraditional(data.subtitle || '未知');
                         
-                        // 處理內容
+                        // 立即進行繁體轉換
+                        const titleTC = toTraditional(data.title);
+                        const authorTC = toTraditional(data.subtitle || '未知');
+                        
+                        // 保存繁體標題供儲存使用
+                        currentRandomTitle = titleTC; 
+                        
+                        // 處理內容 HTML
                         let rawContent = data.content.replace(/<\/p>/gi, '\n\n');
                         rawContent = rawContent.replace(/<br\s*\/?>/gi, '\n');
                         rawContent = rawContent.replace(/<[^>]+>/g, '');
@@ -750,9 +757,18 @@
                         tempDiv.innerHTML = rawContent;
                         let cleanContent = tempDiv.textContent || tempDiv.innerText || "";
 
-                        const fullContent = `【${currentRandomTitle}】\n作者/來源：${author}\n日期：${randomDate}\n\n${cleanContent}`;
+                        // --- 修訂點 1：移除特定廣告文字 ---
+                        cleanContent = cleanContent.replace(/這裡藏著一張圖片，前往應用商店，下載「一個」最新版本查看！/g, '');
+
+                        // 內文轉繁體
+                        const contentTC = toTraditional(cleanContent);
+
+                        // 組合完整內容
+                        const fullContent = `【${titleTC}】\n作者/來源：${authorTC}\n日期：${randomDate}\n\n${contentTC}`;
                         
                         textInput.value = fullContent;
+                        
+                        // 視覺回饋
                         textInput.scrollTop = 0;
                         document.getElementById('text-input-wrapper').style.boxShadow = "0 0 15px rgba(74, 124, 133, 0.5)";
                         setTimeout(() => {
@@ -775,20 +791,18 @@
             const startReadingProcess = (rawText) => {
                 closeAllModals();
                 
+                // 再次轉換確保萬一（如果是用戶貼上的簡體字）
                 const traditionalText = toTraditional(rawText);
                 // 統一引號格式
-                let correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
-                
-                // 修正：強制移除標點符號與關引號之間的換行或空白，確保它們在分段時不會被拆散
-                // 這樣可以防止「」出現在新頁面的開頭
-                correctedText = correctedText.replace(/([。？！\.])[\s\n]*([」』])/g, '$1$2');
-
+                const correctedText = traditionalText.replace(/“/g, '「').replace(/”/g, '」');
+                // 加入段落標記
                 const textWithMarkers = '__NEW_PARA__' + correctedText.replace(/\n\s*/g, '__NEW_PARA__');
                 
                 segmentText(textWithMarkers);
                 
                 if (textSegments.length === 0) return;
 
+                // 切換 UI
                 settingsView.style.opacity = '0';
                 
                 setTimeout(() => {
@@ -810,45 +824,62 @@
                 }, 500);
             };
 
-            // 3. 文字切分邏輯
+            // 3. 文字切分邏輯 (修訂點 2：徹底修復孤兒引號)
             const segmentText = (text) => {
-                // 以標點符號為斷點，保留標點
-                const regex = /(?<=[。？！\.])|(?=__NEW_PARA__)/g;
-                const rawSegments = text.split(regex).filter(s => s && s.trim() !== '');
-
-                let mergedSegments = [];
-                for (let i = 0; i < rawSegments.length; i++) {
-                    let current = rawSegments[i];
-                    if (current.startsWith('__NEW_PARA__')) {
-                        mergedSegments.push(current);
-                        continue;
-                    }
-
-                    // 處理「孤兒標點」：如果下一段以關引號或結束括號開頭，強制合併到上一段
-                    // 更新後的正則：特別包含 '」', '』', ')' 等，且允許前面的空白
-                    while (mergedSegments.length > 0 && !mergedSegments[mergedSegments.length-1].startsWith('__NEW_PARA__')) {
-                        const punctuationMatch = current.match(/^(\s*[”’』」\)\）]+)(.*)/s);
-                        if (punctuationMatch) {
-                            mergedSegments[mergedSegments.length - 1] += punctuationMatch[1];
-                            current = punctuationMatch[2];
-                            if (!current) break;
+                const segments = [];
+                
+                // 步驟 A: 先依據段落標記切分
+                // 這樣可以確保段落結構優先於標點切分
+                const paragraphs = text.split('__NEW_PARA__');
+                
+                let pCounter = 1;
+                
+                paragraphs.forEach(para => {
+                    if (!para) return; // 略過空字串
+                    
+                    // 步驟 B: 在段落內，將「句號/問號/驚嘆號」替換為「標點+分隔符」
+                    // 這樣我們可以保留標點符號
+                    let temp = para.replace(/([。？！\.])/g, "$1|SPLIT|");
+                    let sentences = temp.split('|SPLIT|');
+                    
+                    let currentParaSentences = [];
+                    
+                    for (let i = 0; i < sentences.length; i++) {
+                        let s = sentences[i];
+                        if (!s || s.trim() === '') continue; 
+                        
+                        // 步驟 C: 關鍵合併邏輯
+                        // 檢查這一句是否以「閉合引號」或「連接標點」開頭
+                        // Regex: 匹配開頭的 空白、”、’、』、」、)、）、句號等
+                        const badStartRegex = /^([”’』」\)。？！\.]+)(.*)/s;
+                        const match = s.match(badStartRegex);
+                        
+                        // 如果這一句以「不該出現在行首的符號」開頭，且前一句存在
+                        if (match && currentParaSentences.length > 0) {
+                            // 將這些符號 (match[1]) 黏貼到上一句的尾巴
+                            currentParaSentences[currentParaSentences.length - 1] += match[1];
+                            
+                            // 如果符號後面還有文字 (match[2])，則這部分視為新的一句
+                            if (match[2] && match[2].trim()) {
+                                currentParaSentences.push(match[2]);
+                            }
                         } else {
-                            break;
+                            // 正常情況，直接加入
+                            currentParaSentences.push(s);
                         }
                     }
-                    if (current) mergedSegments.push(current);
-                }
-
-                let processedSegments = [];
-                let pCounter = 1;
-                for (const segment of mergedSegments) {
-                    const isNew = segment.startsWith('__NEW_PARA__');
-                    processedSegments.push({ 
-                        text: isNew ? segment.substring(12) : segment, 
-                        paraNumber: isNew ? pCounter++ : null 
+                    
+                    // 將處理好的句子加入最終列表，並標記段落編號
+                    currentParaSentences.forEach((s, idx) => {
+                        segments.push({
+                            text: s,
+                            // 只有段落的第一句才給予段落編號
+                            paraNumber: idx === 0 ? pCounter++ : null
+                        });
                     });
-                }
-                textSegments = processedSegments;
+                });
+                
+                textSegments = segments;
             };
 
             // 4. 顯示內容
@@ -1090,8 +1121,7 @@
                         </button>`;
                     li.querySelector('.history-item-title').addEventListener('click', () => {
                         textInput.value = item.content; 
-                        // 清空隨機標題，避免影響儲存邏輯
-                        currentRandomTitle = "";
+                        currentRandomTitle = ""; // 載入歷史時清空隨機標題
                         startReadingProcess(item.content);
                     });
                     li.querySelector('.delete-history-button').addEventListener('click', (e) => {
@@ -1129,7 +1159,7 @@
             endHomeButton.addEventListener('click', returnToHome);
             
             endSaveButton.addEventListener('click', () => {
-                // 如果有隨機抓取且轉換過的繁體標題，則預設填入
+                // 使用已保存的繁體標題（如果有）
                 saveTitleInput.value = currentRandomTitle || '未命名文章';
                 showModal(saveModal);
                 saveTitleInput.focus();
